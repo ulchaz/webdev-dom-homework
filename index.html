@@ -9,40 +9,7 @@
   <body>
     <div class="container">
       <ul class="comments" id="list">
-        <li class="comment">
-          <div class="comment-header">
-            <div>Глеб Фокин</div>
-            <div>12.02.22 12:18</div>
-          </div>
-          <div class="comment-body">
-            <div class="comment-text">
-              Это будет первый комментарий на этой странице
-            </div>
-          </div>
-          <div class="comment-footer">
-            <div class="likes">
-              <span class="likes-counter">3</span>
-              <button class="like-button"></button>
-            </div>
-          </div>
-        </li>
-        <li class="comment">
-          <div class="comment-header">
-            <div>Варвара Н.</div>
-            <div>13.02.22 19:22</div>
-          </div>
-          <div class="comment-body">
-            <div class="comment-text">
-              Мне нравится как оформлена эта страница! ❤
-            </div>
-          </div>
-          <div class="comment-footer">
-            <div class="likes">
-              <span class="likes-counter">75</span>
-              <button class="like-button -active-like"></button>
-            </div>
-          </div>
-        </li>
+      
       </ul>
       <div class="add-form">
         <input
@@ -66,14 +33,100 @@
   </body>
 
   <script>
-    "use strict";
-    // Код писать здесь
 
-    const inputNameElement = document.getElementById('inputName');
-    const inputCommentElement = document.getElementById('inputComment');
-    const buttonElement = document.getElementById('button');
-    const listElement = document.getElementById('list');
+"use strict";
+const comments = [
+  {
+    name: 'Глеб Фокин',
+    text: 'Это будет первый комментарий на этой странице',
+    date: '12.02.22 12:18',
+    likes: 3,
+    liked: false
+  },
+  {
+    name: 'Варвара Н.',
+    text: 'Мне нравится как оформлена эта страница! ❤',
+    date: '13.02.22 19:22',
+    likes: 75,
+    liked: true
+  }
+];
+function renderComments() {
+  const listElement = document.getElementById('list');
+  listElement.innerHTML = '';
 
+  comments.forEach(comment => {
+    const commentElement = document.createElement('li');
+    commentElement.classList.add('comment');
+    commentElement.innerHTML = 
+      `<div class="comment-header">
+        <div>${comment.name}</div>
+        <div>${comment.date}</div>
+      </div>
+      <div class="comment-body">
+        <div class="comment-text">${comment.text}</div>
+      </div>
+      <div class="comment-footer">
+        <div class="comment-actions">
+        <button class="like-button ${comment.liked ? '-active-like' : ''}"></button>
+        <span class="likes-counter">${comment.likes}</span>
+      </div>
+      </div>`
+    ;
+    listElement.appendChild(commentElement);
+  });
+// }
+
+
+// document.addEventListener('DOMContentLoaded', function() {
+  const likeButtons = document.querySelectorAll('.like-button');
+  const likesCounters = document.querySelectorAll('.likes-counter');
+
+  let likedStates = [false, false];
+
+  for (let i = 0; i < likeButtons.length; i++) {
+    if (likeButtons[i].classList.contains('-active-like')) {
+      likedStates[i] = true;
+    }
+
+    likeButtons[i].addEventListener('click', function() {
+      likedStates[i] = !likedStates[i];
+
+      if (likedStates[i]) {
+        likesCounters[i].textContent = parseInt(likesCounters[i].textContent) + 1;
+        likeButtons[i].classList.add('-active-like');
+      } else {
+        likesCounters[i].textContent = parseInt(likesCounters[i].textContent) - 1;
+        likeButtons[i].classList.remove('-active-like');
+      }
+    });
+  }
+};
+
+document.addEventListener('DOMContentLoaded', function() {
+  const inputNameElement = document.getElementById('inputName');
+  const inputCommentElement = document.getElementById('inputComment');
+  const buttonElement = document.getElementById('button');
+
+  buttonElement.addEventListener('click', () => {
+    inputNameElement.style.backgroundColor = '';
+    inputCommentElement.style.backgroundColor = '';
+
+    if (inputNameElement.value === '' && inputCommentElement.value === '') {
+      inputNameElement.style.backgroundColor = '#FFA07A';
+      inputCommentElement.style.backgroundColor = '#FFA07A';
+      return;
+    }
+
+    if (inputNameElement.value === '') {
+      inputNameElement.style.backgroundColor = '#FFA07A';
+      return;
+    }
+
+    if (inputCommentElement.value === '') {
+      inputCommentElement.style.backgroundColor = '#FFA07A';
+      return;
+    }
 
     const currentDate = new Date();
   let day, month, year, hours, minutes;
@@ -83,57 +136,25 @@
     hours = String(currentDate.getHours()).padStart(2, '0'); // Часы
     minutes = String(currentDate.getMinutes()).padStart(2, '0'); // Минуты
 
-    const formattedDate = `${day}.${month}.${year} ${hours}:${minutes}`;
-    buttonElement.addEventListener('click',  () => {
-       
-      inputNameElement.style.backgroundColor = '';
-    inputCommentElement.style.backgroundColor = '';
+    const formattedDate =` ${day}.${month}.${year} ${hours}:${minutes}`;
 
-    if (inputNameElement.value === '' && inputCommentElement.value === '') {
-        inputNameElement.style.backgroundColor = '#FFA07A';
-        inputCommentElement.style.backgroundColor = '#FFA07A';
-        return;
-    }
+    const newComment = {
+      name: inputNameElement.value,
+      text: inputCommentElement.value,
+      date: formattedDate,
+      likes: 0,
+      liked: false
+    };
 
-    if (inputNameElement.value === '') {
-        inputNameElement.style.backgroundColor = '#FFA07A';
-        return;
-    }
+    comments.push(newComment);
+    renderComments();
 
-    if (inputCommentElement.value === '') {
-        inputCommentElement.style.backgroundColor = '';
-        return;
-    }
+    inputNameElement.value = '';
+    inputCommentElement.value = '';
+  });
+});
 
-    console.log(inputNameElement.value);
-    console.log(inputCommentElement.value);
-
-       
-        
-
-      const oldListHtml = listElement.innerHTML;
-      listElement.innerHTML = oldListHtml + 
-      `
-      <li class="comment">
-          <div class="comment-header">
-            <div>${inputNameElement.value}</div>
-            <div>${formattedDate}</div>
-          </div>
-          <div class="comment-body">
-            <div class="comment-text">
-              ${inputCommentElement.value}
-            </div>
-          </div>
-          <div class="comment-footer">
-            <div class="likes">
-              <span class="likes-counter">0</span>
-              <button class="like-button"></button>
-            </div>
-          </div>
-        </li>
-      `
-    });
-
-    console.log("It works!");
+renderComments();
+  
   </script>
 </html>
