@@ -55,7 +55,7 @@ function renderComments() {
   const listElement = document.getElementById('list');
   listElement.innerHTML = '';
 
-  comments.forEach(comment => {
+  comments.forEach((comment, index) => {
     const commentElement = document.createElement('li');
     commentElement.classList.add('comment');
     commentElement.innerHTML = 
@@ -68,7 +68,7 @@ function renderComments() {
       </div>
       <div class="comment-footer">
         <div class="comment-actions">
-        <button class="like-button ${comment.liked ? '-active-like' : ''}"></button>
+        <button class="like-button ${comment.liked ? '-active-like' : ''}" data-id="${index}"></button>
         <span class="likes-counter">${comment.likes}</span>
       </div>
       </div>`
@@ -85,20 +85,20 @@ function renderComments() {
   let likedStates = [false, false];
 
   for (let i = 0; i < likeButtons.length; i++) {
-    if (likeButtons[i].classList.contains('-active-like')) {
-      likedStates[i] = true;
-    }
+    const button = likeButtons[i]
 
-    likeButtons[i].addEventListener('click', function() {
-      likedStates[i] = !likedStates[i];
+    button.addEventListener('click', function() {
+      const index = button.dataset.id
+      const comment = comments[index]
+      comment.liked = !comment.liked
 
-      if (likedStates[i]) {
-        likesCounters[i].textContent = parseInt(likesCounters[i].textContent) + 1;
-        likeButtons[i].classList.add('-active-like');
+      if (comment.liked) {
+        comment.likes++
       } else {
-        likesCounters[i].textContent = parseInt(likesCounters[i].textContent) - 1;
-        likeButtons[i].classList.remove('-active-like');
+        comment.likes--
       }
+
+      renderComments();
     });
   }
 };
