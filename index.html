@@ -151,6 +151,10 @@ document.addEventListener('DOMContentLoaded', function() {
     inputNameElement.style.backgroundColor = '';
     inputCommentElement.style.backgroundColor = '';
 
+    const inputNameValue = inputNameElement.value.trim();
+    const inputCommentValue = inputNameElement.value.trim();
+    
+
     if (inputNameElement.value === '' && inputCommentElement.value === '') {
       inputNameElement.style.backgroundColor = '#FFA07A';
       inputCommentElement.style.backgroundColor = '#FFA07A';
@@ -169,14 +173,18 @@ document.addEventListener('DOMContentLoaded', function() {
 
     buttonElement.addEventListener("click", () => {
     
-const fetchPromise = fetch('https://wedev-api.sky.pro/api/v1/ulchaz/comments',{
+fetch('https://wedev-api.sky.pro/api/v1/ulchaz/comments',{
   method: "POST",
   body: JSON.stringify ({
     name: inputNameElement.value.replaceAll("<", "&lt;").replaceAll(">", "&gt;"),
     text: inputCommentElement.value.replaceAll("<", "&lt;").replaceAll(">", "&gt;"),
             }),
+}).then((response) => {
+  response.json().then((responseData) => {
+    tasks = responseData.todos;
+    renderComments();
+  });
 });
-dataAcquisitionFunction();
 
  
     })
