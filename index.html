@@ -39,57 +39,50 @@
 
 "use strict";
 
+String.prototype.sanitize = function () {
+  return this.replaceAll("<", "&lt;").replaceAll(">", "&gt;")
+}
 
-const currentDate = new Date();
-  let day, month, year, hours, minutes;
-    day = String(currentDate.getDate()).padStart(2, '0'); 
-    month = String(currentDate.getMonth() + 1).padStart(2, '0'); 
-    year = String(currentDate.getFullYear()).slice(-2); 
-    hours = String(currentDate.getHours()).padStart(2, '0'); 
-    minutes = String(currentDate.getMinutes()).padStart(2, '0'); 
+Date.prototype.format = function () {
+  let day = String(this.getDate()).padStart(2, '0')
+  let month = String(this.getMonth() + 1).padStart(2, '0')
+  let year = String(this.getFullYear()).slice(-2)
+  let hours = String(this.getHours()).padStart(2, '0')
+  let minutes = String(this.getMinutes()).padStart(2, '0')
 
-    const formattedDate =` ${day}.${month}.${year} ${hours}:${minutes}`;
+  return `${day}.${month}.${year} ${hours}:${minutes}`
+}
 
-
-    let comments = [];
+const address = 'https://wedev-api.sky.pro/api/v1/ulchaz/comments'
+let comments = []
 
 function dataAcquisitionFunction () {
-
-const fetchPromise = fetch('https://wedev-api.sky.pro/api/v1/ulchaz/comments',{
-  method: "GET",
-});
-
-fetchPromise.then((response) => {
-
-  const jsonPromise = response.json();
-
-  jsonPromise.then((responseData) => {
-    console.log(responseData);
-
+  fetch(address)
+  .then((response) => response.json())
+  .then((responseData) => {
     comments = responseData.comments.map((comment) => {
-					
-					return {
-						name: comment.author.name,
-						date: `${formattedDate} `,
-						text: comment.text,
-						likes: comment.likes, 
-						liked: comment.isLiked
-          };
-				});
-        console.log(comments);
-    renderComments();
-  });
-});
+      return {
+        name: comment.author.name,
+        date: new Date(comment.date).format(),
+        text: comment.text,
+        likes: comment.likes, 
+        liked: comment.isLiked,
+      }
+    })
+    
+    renderComments()
+  })
 }
-dataAcquisitionFunction();
+
+dataAcquisitionFunction()
 
 function renderComments() {
-  const listElement = document.getElementById('list');
-  listElement.innerHTML = '';
+  const listElement = document.getElementById('list')
+  listElement.innerHTML = ''
 
   comments.forEach((comment, index) => {
-    const commentElement = document.createElement('li');
-    commentElement.classList.add('comment');
+    const commentElement = document.createElement('li')
+    commentElement.classList.add('comment')
     commentElement.innerHTML = 
       `<div class="comment-header">
         <div>${comment.name}</div>
@@ -103,28 +96,31 @@ function renderComments() {
         <button class="like-button ${comment.liked ? '-active-like' : ''}" data-id="${index}"></button>
         <span class="likes-counter">${comment.likes}</span>
       </div>
-      </div>`;
+      </div>`
     commentElement.addEventListener('click', function(event) {
       if (event.target.matches('.like-button')) {
-        event.stopPropagation();
+        event.stopPropagation()
+        return
+      }
+
+      const replyForm = document.getElementById('reply-form')
+      const replyText = replyForm.querySelector('.add-form-text')
+      replyText.value = `> ${comment.text}
+      ${comment.name}, `
+    })
+
+    commentElement.addEventListener('click', function(event) {
+      if (event.target.closest('.like-button')) {
         return;
       }
-  const replyForm = document.getElementById('reply-form');
-  const replyText = replyForm.querySelector('.add-form-text');
-  replyText.value = `> ${comment.text}
-  ${comment.name}, ` ;
-});
+    })
 
-commentElement.addEventListener('click', function(event) {
-  if (event.target.closest('.like-button')) {
-    return;
-  }
-});
-    listElement.appendChild(commentElement);
-  });
-  const likeButtons = document.querySelectorAll('.like-button');
-  const likesCounters = document.querySelectorAll('.likes-counter');
-  let likedStates = [false, false];
+    listElement.appendChild(commentElement)
+  })
+
+  const likeButtons = document.querySelectorAll('.like-button')
+  const likesCounters = document.querySelectorAll('.likes-counter')
+  let likedStates = [false, false]
 
   for (let i = 0; i < likeButtons.length; i++) {
     const button = likeButtons[i]
@@ -137,76 +133,62 @@ commentElement.addEventListener('click', function(event) {
       } else {
         comment.likes--
       }
-      renderComments();
-    });
+
+      renderComments()
+    })
   }
-};
+}
 
 document.addEventListener('DOMContentLoaded', function() {
-  const inputNameElement = document.getElementById('inputName');
-  const inputCommentElement = document.getElementById('inputComment');
-  const buttonElement = document.getElementById('button');
+  const inputNameElement = document.getElementById('inputName')
+  const inputCommentElement = document.getElementById('inputComment')
+  const buttonElement = document.getElementById('button')
 
   buttonElement.addEventListener('click', () => {
-    inputNameElement.style.backgroundColor = '';
-    inputCommentElement.style.backgroundColor = '';
+    inputNameElement.style.backgroundColor = ''
+    inputCommentElement.style.backgroundColor = ''
 
-    const inputNameValue = inputNameElement.value.trim();
-    const inputCommentValue = inputNameElement.value.trim();
+    const inputNameValue = inputNameElement.value.trim()
+    const inputCommentValue = inputCommentElement.value.trim()
     
-
-    if (inputNameElement.value === '' && inputCommentElement.value === '') {
-      inputNameElement.style.backgroundColor = '#FFA07A';
-      inputCommentElement.style.backgroundColor = '#FFA07A';
-      return;
+    if (inputNameValue === '' && inputCommentValue === '') {
+      inputNameElement.style.backgroundColor = '#FFA07A'
+      inputCommentElement.style.backgroundColor = '#FFA07A'
+      return
+    }
+    if (inputNameValue === '') {
+      inputNameElement.style.backgroundColor = '#FFA07A'
+      return
+    }
+    if (inputCommentValue === '') {
+      inputCommentElement.style.backgroundColor = '#FFA07A'
+      return
     }
 
-    if (inputNameElement.value === '') {
-      inputNameElement.style.backgroundColor = '#FFA07A';
-      return;
-    }
-
-    if (inputCommentElement.value === '') {
-      inputCommentElement.style.backgroundColor = '#FFA07A';
-      return;
-    }
-
-    buttonElement.addEventListener("click", () => {
+    sendCommentToServer()
     
-fetch('https://wedev-api.sky.pro/api/v1/ulchaz/comments',{
-  method: "POST",
-  body: JSON.stringify ({
-    name: inputNameElement.value.replaceAll("<", "&lt;").replaceAll(">", "&gt;"),
-    text: inputCommentElement.value.replaceAll("<", "&lt;").replaceAll(">", "&gt;"),
-            }),
-}).then((response) => {
-  response.json().then((responseData) => {
-    tasks = responseData.todos;
-    renderComments();
-  });
-});
+    inputNameElement.value = ''
+    inputCommentElement.value = ''
+  })
+})
 
- 
+function sendCommentToServer() {
+  fetch(address, {
+    method: "POST",
+    body: JSON.stringify({
+      name: inputNameValue.sanitize(),
+      text: inputCommentValue.sanitize(),
+    }),
+  })
+    .then((response) => response.json())
+    .then((responseData) => {
+      // comments = responseData.todos;
+      // renderComments();
+      dataAcquisitionFunction()
     })
+}
 
-   
-    const newComment = {
-      name: inputNameElement.value.replaceAll("<", "&lt;").replaceAll(">", "&gt;"),
-      text: inputCommentElement.value.replaceAll("<", "&lt;").replaceAll(">", "&gt;"),
-      date: formattedDate,
-      likes: 0,
-      liked: false
-    };
-
-    comments.push(newComment);
-    renderComments();
-
-    inputNameElement.value = '';
-    inputCommentElement.value = '';
-  });
-});
-
-renderComments();
+renderComments()
   
   </script>
 </html>
