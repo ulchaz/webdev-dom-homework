@@ -165,19 +165,20 @@ document.addEventListener('DOMContentLoaded', function() {
       return
     }
 
-    sendCommentToServer()
+    sendCommentToServer(inputNameValue, inputCommentValue)
+
     
     inputNameElement.value = ''
     inputCommentElement.value = ''
   })
 })
 
-function sendCommentToServer() {
+function sendCommentToServer(name, text) {
   fetch(address, {
     method: "POST",
     body: JSON.stringify({
-      name: inputNameValue.sanitize(),
-      text: inputCommentValue.sanitize(),
+      name: name.sanitize(),
+      text: text.sanitize(),
     }),
   })
     .then((response) => response.json())
