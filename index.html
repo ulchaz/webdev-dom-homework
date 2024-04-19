@@ -54,7 +54,7 @@ Date.prototype.format = function () {
   return `${day}.${month}.${year} ${hours}:${minutes}`
 }
 
-const address = 'https://wedev-api.sky.pro/api/v1/ulchaz/comments'
+const address = 'https://wedev-api.sky.pro/api/v1/yulia-esaulkova/comments'
 let comments = []
 const listElement = document.getElementById('list')
 let loadList = document.getElementById("loading")
@@ -160,11 +160,14 @@ function renderComments() {
     })
   }
 }
-
-document.addEventListener('DOMContentLoaded', function() {
-  const inputNameElement = document.getElementById('inputName')
+const inputNameElement = document.getElementById('inputName')
   const inputCommentElement = document.getElementById('inputComment')
-  const buttonElement = document.getElementById('button')
+
+const buttonElement = document.getElementById('button')
+document.addEventListener('DOMContentLoaded', function() {
+  // const inputNameElement = document.getElementById('inputName')
+  // const inputCommentElement = document.getElementById('inputComment')
+
 
   buttonElement.addEventListener('click', () => {
     inputNameElement.style.backgroundColor = ''
@@ -195,16 +198,14 @@ document.addEventListener('DOMContentLoaded', function() {
   })
 })
 
-// let loadInputElement
-const loadInputText =document.getElementById('reply-form')
+const loadInputText = document.getElementById('reply-form')
 
 let previousInnerHTML = ''
 
 function loadInput() {  
   if (loadInputElement === true) {
     previousInnerHTML = loadInputText.innerHTML
-    loadInputText.innerHTML = 'Комментарий загружается'
-    
+    loadInputText.innerHTML = 'Комментарий загружается'    
   } else {
     loadInputText.innerHTML = previousInnerHTML
   }
@@ -212,8 +213,10 @@ function loadInput() {
 
 
 function sendCommentToServer(name, text) {
- loadInputElement = true
- loadInput()
+const inputNameText = inputNameElement.value
+const inputCommentText = inputCommentElement.value
+  loadInputElement = true
+  loadInput()
  
   fetch(address, {
     method: "POST",
@@ -222,14 +225,37 @@ function sendCommentToServer(name, text) {
       text: text.sanitize(),
     }),
   })
-   .then((response) => response.json())
-    .then((responseData) => {
-      loadInputElement = false
-        loadInput()
-        renderComments()
-    })
-    
+  .then((response) => {
+    if (response.status === 400) {
+            throw new Error("Некорректный запрос error 400");
+          } else if (response.status === 500) {
+            throw new Error("Ошибка сервера error 500");
+          } else {return response.json();}
+        })
+  .then((responseData) => {
+
+    loadInputElement = false
+      loadInput()
+      renderComments()
       dataAcquisitionFunction()
+      return responseData
+
+
+    }).catch((error) => {
+      inputNameElement.value = inputNameText
+    inputCommentElement.value = inputCommentText
+  if (error.message === "Некорректный запрос error 400") {
+    alert("Длина имени не может быть меньше 3 символов");
+  } else if (error.message === "Ошибка сервера error 500") {
+    alert("Ошибка сервера");
+  } else if (error.message === "Failed to fetch") {
+    alert("Отсутствует соединение к интернету");
+  }
+})
+  .finally(() => {
+    loadInputElement = false;
+    loadInput();
+  });
     
      
 }
