@@ -69,6 +69,12 @@ function dataAcquisitionFunction () {
   updateLoadingClass();
   return fetch(address)
     .then((response) => {
+      if (response.status === 400) {
+        throw new Error("Некорректный запрос error 400")
+      } else if (response.status === 500) {
+        throw new Error("Ошибка сервера error 500")
+      }
+
       loadElement = false
       updateLoadingClass();
       return response.json()
@@ -85,6 +91,15 @@ function dataAcquisitionFunction () {
       })
 
       renderComments()
+    })
+    .catch((error) => {
+      if (error.message === "Некорректный запрос error 400") {
+        alert("Длина имени не может быть меньше 3 символов");
+      } else if (error.message === "Ошибка сервера error 500") {
+        alert("Ошибка сервера");
+      } else if (error.message === "Failed to fetch") {
+        alert("Отсутствует соединение к интернету");
+      }
     })
 }
 
@@ -151,6 +166,7 @@ function renderComments() {
     })
   }
 }
+
 document.addEventListener('DOMContentLoaded', function() {
   handleSubmit()
 })
