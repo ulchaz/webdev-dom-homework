@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="ru">
   <head>
     <title>Проект "Комменты"</title>
     <meta charset="utf-8" />
@@ -13,24 +13,10 @@
       
       </ul>
       <div id="reply-form" class="add-form">
-        <input
-          type="text"
-          class="add-form-name"
-          placeholder="Введите ваше имя"
-          id="inputName"
-        />
-        <textarea
-          type="textarea"
-          class="add-form-text"
-          placeholder="Введите ваш комментарий"
-          rows="4"
-          id="inputComment"
-        ></textarea>
+        <input type="text" class="add-form-name" placeholder="Введите ваше имя" id="inputName">
+        <textarea class="add-form-text" placeholder="Введите ваш комментарий" rows="4" id="inputComment"></textarea>
         <div class="add-form-row">
           <button id="button" class="add-form-button">Написать</button>
-        </div>
-      </div>
-      
         </div>
       </div>
     </div>
@@ -39,6 +25,13 @@
   <script>
 
 "use strict";
+
+let inputNameElement
+let inputCommentElement
+let buttonElement
+
+let name = ""
+let comment = ""
 
 String.prototype.sanitize = function () {
   return this.replaceAll("<", "&lt;").replaceAll(">", "&gt;")
@@ -75,31 +68,42 @@ function dataAcquisitionFunction () {
   loadElement = true
   updateLoadingClass();
   return fetch(address)
-  .then((response) => {
-    loadElement = false
-    updateLoadingClass();
-    return response.json()
-  })
-  
-  .then((responseData) => {
-    comments = responseData.comments.map((comment) => {
-      return {
-        name: comment.author.name,
-        date: new Date(comment.date).format(),
-        text: comment.text,
-        likes: comment.likes, 
-        liked: comment.isLiked,
+    .then((response) => {
+      if (response.status === 400) {
+        throw new Error("Некорректный запрос error 400")
+      } else if (response.status === 500) {
+        throw new Error("Ошибка сервера error 500")
+      }
+
+      loadElement = false
+      updateLoadingClass();
+      return response.json()
+    })
+    .then((responseData) => {
+      comments = responseData.comments.map((comment) => {
+        return {
+          name: comment.author.name,
+          date: new Date(comment.date).format(),
+          text: comment.text,
+          likes: comment.likes,
+          liked: comment.isLiked,
+        }
+      })
+
+      renderComments()
+    })
+    .catch((error) => {
+     if (error.message === "Ошибка сервера error 500") {
+        alert("Ошибка сервера");
+      } else if (error.message === "Failed to fetch") {
+        alert("Отсутствует соединение к интернету");
       }
     })
-    
-    renderComments()
-  })
 }
 
 dataAcquisitionFunction()
 
 function renderComments() {
-  
   listElement.innerHTML = ''
 
   comments.forEach((comment, index) => {
@@ -160,43 +164,43 @@ function renderComments() {
     })
   }
 }
-const inputNameElement = document.getElementById('inputName')
-  const inputCommentElement = document.getElementById('inputComment')
 
-const buttonElement = document.getElementById('button')
 document.addEventListener('DOMContentLoaded', function() {
-  // const inputNameElement = document.getElementById('inputName')
-  // const inputCommentElement = document.getElementById('inputComment')
+  handleSubmit()
+})
 
+function handleSubmit() {
+  inputNameElement = document.getElementById('inputName')
+  inputCommentElement = document.getElementById('inputComment')
+  buttonElement = document.getElementById('button')
 
   buttonElement.addEventListener('click', () => {
     inputNameElement.style.backgroundColor = ''
     inputCommentElement.style.backgroundColor = ''
 
-    const inputNameValue = inputNameElement.value.trim()
-    const inputCommentValue = inputCommentElement.value.trim()
+    name    = inputNameElement.value.trim()
+    comment = inputCommentElement.value.trim()
     
-    if (inputNameValue === '' && inputCommentValue === '') {
+    if (name === '' && comment === '') {
       inputNameElement.style.backgroundColor = '#FFA07A'
       inputCommentElement.style.backgroundColor = '#FFA07A'
       return
     }
-    if (inputNameValue === '') {
+    if (name === '') {
       inputNameElement.style.backgroundColor = '#FFA07A'
       return
     }
-    if (inputCommentValue === '') {
+    if (comment === '') {
       inputCommentElement.style.backgroundColor = '#FFA07A'
       return
     }
 
-    sendCommentToServer(inputNameValue, inputCommentValue)
-
+    sendCommentToServer()
     
     inputNameElement.value = ''
     inputCommentElement.value = ''
   })
-})
+}
 
 const loadInputText = document.getElementById('reply-form')
 
@@ -208,13 +212,16 @@ function loadInput() {
     loadInputText.innerHTML = 'Комментарий загружается'    
   } else {
     loadInputText.innerHTML = previousInnerHTML
+
+    handleSubmit()
+
+    inputNameElement.value    = name
+    inputCommentElement.value = comment
   }
 }
 
 
-function sendCommentToServer(name, text) {
-const inputNameText = inputNameElement.value
-const inputCommentText = inputCommentElement.value
+function sendCommentToServer() {
   loadInputElement = true
   loadInput()
  
@@ -222,44 +229,44 @@ const inputCommentText = inputCommentElement.value
     method: "POST",
     body: JSON.stringify({
       name: name.sanitize(),
-      text: text.sanitize(),
+      text: comment.sanitize(),
+      forceError: true,
     }),
   })
-  .then((response) => {
-    if (response.status === 400) {
-            throw new Error("Некорректный запрос error 400");
-          } else if (response.status === 500) {
-            throw new Error("Ошибка сервера error 500");
-          } else {return response.json();}
-        })
-  .then((responseData) => {
-
-    loadInputElement = false
+    .then((response) => {
+      if (response.status === 400) {
+        throw new Error("Некорректный запрос error 400")
+      } else if (response.status === 500) {
+        throw new Error("Ошибка сервера error 500")
+      } else {
+        return response.json();
+      }
+    })
+    .then((responseData) => {
+      loadInputElement = false
       loadInput()
       renderComments()
       dataAcquisitionFunction()
       return responseData
+    })
+    .catch((error) => {
+        // inputCommentElement.value = inputCommentText
+      if (error.message === "Некорректный запрос error 400") {
+        alert("Длина имени не может быть меньше 3 символов");
+      } else if (error.message === "Ошибка сервера error 500") {
+        alert("Ошибка сервера");
+      } else if (error.message === "Failed to fetch") {
+        alert("Отсутствует соединение к интернету");
+      }
+    })
+    .finally(() => {
+      loadInputElement = false;
+      loadInput();
 
-
-    }).catch((error) => {
-      inputNameElement.value = inputNameText
-    inputCommentElement.value = inputCommentText
-  if (error.message === "Некорректный запрос error 400") {
-    alert("Длина имени не может быть меньше 3 символов");
-  } else if (error.message === "Ошибка сервера error 500") {
-    alert("Ошибка сервера");
-  } else if (error.message === "Failed to fetch") {
-    alert("Отсутствует соединение к интернету");
-  }
-})
-  .finally(() => {
-    loadInputElement = false;
-    loadInput();
-  });
-    
-     
+      name    = ""
+      comment = ""
+    });
 }
-
 
 renderComments()
   
