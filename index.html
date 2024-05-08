@@ -93,9 +93,7 @@ function dataAcquisitionFunction () {
       renderComments()
     })
     .catch((error) => {
-      if (error.message === "Некорректный запрос error 400") {
-        alert("Длина имени не может быть меньше 3 символов");
-      } else if (error.message === "Ошибка сервера error 500") {
+     if (error.message === "Ошибка сервера error 500") {
         alert("Ошибка сервера");
       } else if (error.message === "Failed to fetch") {
         alert("Отсутствует соединение к интернету");
