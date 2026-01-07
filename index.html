@@ -8,7 +8,7 @@
 
   <body>
     <div class="container">
-      <ul class="comments">
+      <ul class="comments" id="comments">
         <li class="comment">
           <div class="comment-header">
             <div>Глеб Фокин</div>
@@ -46,18 +46,20 @@
       </ul>
       <div class="add-form">
         <input
+        id="input-name"
           type="text"
           class="add-form-name"
           placeholder="Введите ваше имя"
         />
         <textarea
+        id="input-comment"
           type="textarea"
           class="add-form-text"
           placeholder="Введите ваш коментарий"
           rows="4"
         ></textarea>
         <div class="add-form-row">
-          <button class="add-form-button">Написать</button>
+          <button id="button" class="add-form-button">Написать</button>
         </div>
       </div>
     </div>
@@ -66,6 +68,65 @@
   <script>
     "use strict";
     // Код писать здесь
+    const inputNameEl = document.getElementById('input-name');
+    const inputCommentEl = document.getElementById('input-comment');
+    const buttonEl = document.getElementById('button');
+    const commentsEl = document.getElementById('comments');
+
+    // Дата
+    const data = new Date()
+
+    const day = String(data.getDate()).padStart(2, '0');
+    const month = String(data.getMonth() + 1).padStart(2, '0');
+    const year = String(data.getFullYear()).slice(-2);
+
+    const hours = String(data.getHours()).padStart(2, '0');
+    const minutes = String(data.getMinutes()).padStart(2, '0');
+
+    const formattedDate = `${day}.${month}.${year} ${hours}:${minutes}`;
+
+    //Добавление коментария при клике на кнопку
+    buttonEl.addEventListener('click', function (e) {
+
+      //Проверка на наличие текста
+      inputNameEl.classList.remove('error-color');
+      inputCommentEl.classList.remove('error-color');
+
+      if (inputNameEl.value === '') {
+        inputNameEl.classList.add('error-color');
+      }
+      if (inputCommentEl.value === '') {
+        inputCommentEl.classList.add('error-color');
+      }
+      if (inputNameEl.value === '' || inputCommentEl.value === '') {
+        return;
+      }
+
+      const oldComments = commentsEl.innerHTML;
+
+      commentsEl.innerHTML = oldComments + 
+      `
+              <li class="comment">
+          <div class="comment-header">
+            <div>${inputNameEl.value}</div>
+            <div>${formattedDate}</div>
+          </div>
+          <div class="comment-body">
+            <div class="comment-text">
+              ${inputCommentEl.value}
+            </div>
+          </div>
+          <div class="comment-footer">
+            <div class="likes">
+              <span class="likes-counter">0</span>
+              <button class="like-button"></button>
+            </div>
+          </div>
+        </li>
+        
+      `
+    });
+
     console.log("It works!");
   </script>
 </html>
