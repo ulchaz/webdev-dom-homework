@@ -74,21 +74,22 @@
     const commentsEl = document.getElementById('comments');
 
     // Дата
-    const data = new Date()
+    function getFormattedDate() {
+      const data = new Date()
+      const day = String(data.getDate()).padStart(2, '0');
+      const month = String(data.getMonth() + 1).padStart(2, '0');
+      const year = String(data.getFullYear()).slice(-2);
+      const hours = String(data.getHours()).padStart(2, '0');
+      const minutes = String(data.getMinutes()).padStart(2, '0');
 
-    const day = String(data.getDate()).padStart(2, '0');
-    const month = String(data.getMonth() + 1).padStart(2, '0');
-    const year = String(data.getFullYear()).slice(-2);
+      return `${day}.${month}.${year} ${hours}:${minutes}`;
 
-    const hours = String(data.getHours()).padStart(2, '0');
-    const minutes = String(data.getMinutes()).padStart(2, '0');
+    }
 
-    const formattedDate = `${day}.${month}.${year} ${hours}:${minutes}`;
 
-    //Добавление коментария при клике на кнопку
-    buttonEl.addEventListener('click', function (e) {
+    //Функция для добавления комментария
 
-      //Проверка на наличие текста
+    function addComment() {
       inputNameEl.classList.remove('error-color');
       inputCommentEl.classList.remove('error-color');
 
@@ -101,7 +102,7 @@
       if (inputNameEl.value === '' || inputCommentEl.value === '') {
         return;
       }
-
+      const formattedDate = getFormattedDate();
       const oldComments = commentsEl.innerHTML;
 
       commentsEl.innerHTML = oldComments + 
@@ -127,6 +128,17 @@
       `
       inputNameEl.value = '';
       inputCommentEl.value = '';
+    };
+
+    //Добавление комментария по клике на кнопку
+    buttonEl.addEventListener('click', addComment);
+
+    //Добавление комментария при нажатии Enter
+
+    document.addEventListener('keyup', function (e) {
+      if (e.key === 'Enter') {
+        addComment();
+      }
     });
 
     //Отключение кнопки при пустых полях
