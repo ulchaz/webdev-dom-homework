@@ -125,7 +125,22 @@
         </li>
         
       `
+      inputNameEl.value = '';
+      inputCommentEl.value = '';
     });
+
+    //Отключение кнопки при пустых полях
+    function updateButtonState() {
+      const isNameEmpty = inputNameEl.value === '';
+      const isCommentEmpty = inputCommentEl.value === '';
+      buttonEl.disabled = isNameEmpty || isCommentEmpty;
+    }
+
+    buttonEl.disabled = true;
+    inputNameEl.addEventListener('input', updateButtonState);
+    inputCommentEl.addEventListener('input', updateButtonState);
+
+    buttonEl.disabled = true;
 
     console.log("It works!");
   </script>

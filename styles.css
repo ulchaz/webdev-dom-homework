@@ -139,3 +139,10 @@ body {
   .error-color{
     background-color: #c86d6d;
   }
+
+  .add-form-button:disabled {
+    background-color: #cccccc;
+    color: #666666;
+    cursor: not-allowed;
+    border-color: #cccccc;
+  }
