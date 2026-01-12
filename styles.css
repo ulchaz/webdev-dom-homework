@@ -52,7 +52,7 @@ body {
 
   .comment-footer {
     display: flex;
-    justify-content: flex-end;
+    justify-content: space-between;
   }
 
   .comment-body {
@@ -156,3 +156,56 @@ body {
     cursor: not-allowed;
     border-color: #cccccc;
   }
+
+  .edit-button{
+    font-size: 16px;
+    padding: 8px 10px;
+    background-color: #bcec30;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    }
+
+.edit-button, .save-button {
+  font-size: 16px;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  font-family: Helvetica;
+  transition: all 0.2s ease;
+}
+
+.edit-button {
+  background-color: #bcec30;
+  color: #202020;
+}
+
+.save-button {
+  background-color: #7334ea;
+  color: #ffffff;
+}
+
+.edit-button:hover, .save-button:hover {
+  opacity: 0.9;
+  transform: translateY(-2px);
+}
+
+.edit-button:active, .save-button:active {
+  transform: translateY(0);
+}
+
+.edit-textarea {
+  width: 100%;
+  min-height: 120px;
+  font-size: 32px;
+  font-family: Helvetica;
+  color: #ffffff;
+  padding: 16px;
+  box-sizing: border-box;
+  background: rgba(255, 255, 255, 0.1);
+  border: 2px solid #bcec30;
+  border-radius: 8px;
+  resize: vertical;
+  outline: none;
+}

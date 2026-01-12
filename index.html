@@ -9,7 +9,6 @@
   <body>
     <div class="container">
       <ul class="comments" id="comments">
-
       </ul>
       <button class="delete-button" id="delete-button">Удалить</button>
       <div class="add-form">
@@ -67,6 +66,7 @@
         text: 'Это будет первый комментарий на этой странице',
         isLiked: false,
         likes: 3,
+        isEdit: false,
       },
       {
         name: 'Варвара Н.',
@@ -74,8 +74,10 @@
         text: 'Мне нравится как оформлена эта страница! ❤',
         isLiked: true,
         likes: 75,
+        isEdit: false,
       },
     ];
+
     //Функция для обработки лайков
     function toggleLike(index) {
       const comment = comments[index];
@@ -90,6 +92,37 @@
       renderComments();
     };
 
+    //Функция для включения режима редактирования
+    function enableEditMode(index) {
+      comments.forEach(comment => {
+        comment.isEdit = false;
+      });
+
+    //Включение редактирования у выбранного комментария
+    comments[index].isEdit = true;
+
+    renderComments();
+    }
+
+
+
+    //Функция для сохранения изменений
+    function saveComment(index) {
+      const textarea = document.querySelector('.edit-textarea[data-index="' + index + '"]');
+
+      if (textarea) {
+        const newText = textarea.value.trim();
+
+        if (newText !== '') {
+          comments[index].text = newText;
+        }
+
+      comments[index].isEdit = false;
+
+      renderComments();
+      }
+    }
+
       // Инициализация обработчиков лайков
       function initLikeListeners() {
         commentsEl.addEventListener('click', (event) => {
@@ -100,10 +133,54 @@
         });
       }
 
+    //Инициализация обработчиков для кнопок "Редактировать" и "Сохранить"
+    function initEditAndSaveListeners() {
+      commentsEl.addEventListener('click', function (event) {
+        const editButton = event.target.closest('.edit-button');
+        if (editButton) {
+          const index = parseInt(editButton.getAttribute('data-index'));
+          if (!isNaN(index)) {
+            enableEditMode(index);
+          }
+        }
+
+        const saveButton = event.target.closest('.save-button');
+        if (saveButton) {
+          const index = parseInt(saveButton.getAttribute('data-index'));
+          if (!isNaN(index)) {
+            saveComment(index);
+          }
+        }
+      });
+    }
+
+    //Функция рендеринга комментариев
     const renderComments = () => {
       const commentsHtml = comments.map((comment, index) => {
         const likeButtonClass = comment.isLiked ? 'like-button -active-like' : 'like-button';
 
+        //В режиме редактирования
+        if(comment.isEdit) {
+          return `
+          <li class="comment">
+          <div class="comment-header">
+            <div>${comment.name}</div>
+            <div>${comment.date}</div>
+          </div>
+          <div class="comment-body">
+            <textarea class="edit-textarea" data-index="${index}">${comment.text}</textarea>
+          </div>
+          <div class="comment-footer">
+            <button class="save-button" data-index="${index}">Сохранить</button>
+            <div class="likes">
+              <span class="likes-counter">${comment.likes}</span>
+              <button class="${likeButtonClass}" data-index="${index}"></button>
+            </div>
+          </div>
+        </li>
+          `
+        } else {
+          //Обычный режим
         return `
               <li class="comment">
           <div class="comment-header">
@@ -116,6 +193,7 @@
             </div>
           </div>
           <div class="comment-footer">
+            <button class="edit-button" data-index="${index}">Редактировать</button>
             <div class="likes">
               <span class="likes-counter">${comment.likes}</span>
               <button class="${likeButtonClass}" data-index="${index}"></button>
@@ -123,15 +201,13 @@
           </div>
         </li>
         
-      `
+      `;
+    }
       }).join('');
 
       commentsEl.innerHTML = commentsHtml;
     };
 
-    renderComments();
-    initLikeListeners();
-    
 
     //Функция для добавления комментария
     function addComment() {
@@ -156,6 +232,7 @@
         text: inputCommentEl.value,
         isLiked: false,
         likes: 0,
+        isEdit: false,
       });
 
       renderComments();
@@ -165,6 +242,28 @@
 
       updateButtonState();
     };
+
+
+
+    //Отключение кнопки при пустых полях
+    function updateButtonState() {
+      const isNameEmpty = inputNameEl.value === '';
+      const isCommentEmpty = inputCommentEl.value === '';
+      buttonEl.disabled = isNameEmpty || isCommentEmpty;
+    }
+
+    //Удаление последнего комментария
+    function deleteLastComment() {
+        if (comments.length > 0) {
+        comments.pop();
+        
+        renderComments();
+      }
+    }
+
+    renderComments();
+    initLikeListeners();
+    initEditAndSaveListeners();
 
     //Добавление комментария по клике на кнопку
     buttonEl.addEventListener('click', addComment);
@@ -176,29 +275,11 @@
       }
     });
 
-    //Отключение кнопки при пустых полях
-    function updateButtonState() {
-      const isNameEmpty = inputNameEl.value === '';
-      const isCommentEmpty = inputCommentEl.value === '';
-      buttonEl.disabled = isNameEmpty || isCommentEmpty;
-    }
-
     updateButtonState();
     inputNameEl.addEventListener('input', updateButtonState);
     inputCommentEl.addEventListener('input', updateButtonState);
 
-    //Удаление последнего комментария
-    function deleteLastComment() {
-      const currentHtml = commentsEl.innerHTML;
-      const lastIndex = currentHtml.lastIndexOf('<li class="comment">');
-
-      if (lastIndex !== -1) {
-        commentsEl.innerHTML = currentHtml.substring(0, lastIndex);
-        renderComments();
-      }
-    }
-
-   deleteButtonEl.addEventListener('click', deleteLastComment);
+    deleteButtonEl.addEventListener('click', deleteLastComment);
 
     console.log("It works!");
   });
