@@ -56,7 +56,6 @@
       return `${day}.${month}.${year} ${hours}:${minutes}`;
     }
 
-
     const commentElements = document.querySelectorAll('.comment');
 
     const comments = [
@@ -105,7 +104,6 @@
     }
 
 
-
     //Функция для сохранения изменений
     function saveComment(index) {
       const textarea = document.querySelector('.edit-textarea[data-index="' + index + '"]');
@@ -123,33 +121,59 @@
       }
     }
 
-      // Инициализация обработчиков лайков
-      function initLikeListeners() {
-        commentsEl.addEventListener('click', (event) => {
-          if (event.target.classList.contains('like-button')) {
-            const index = parseInt(event.target.getAttribute('data-index'));
-            toggleLike(index);
-          }
-        });
-      }
+    //Функция для ответов на комментарий
+    function replyToComment(index) {
+      const comment = comments[index];
+      inputNameEl.value = '';
+      inputCommentEl.value = '>' + comment.text + '\n\n' + comment.name + ', '
+    };
 
-    //Инициализация обработчиков для кнопок "Редактировать" и "Сохранить"
-    function initEditAndSaveListeners() {
+    // Функция для экранирования HTML
+    function escapeHtml(unsafe) {
+      if (typeof unsafe !== 'string') return unsafe;
+      return unsafe
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    };
+
+    //Обработчик на все клики
+    function initAllListeners() {
       commentsEl.addEventListener('click', function (event) {
+        const likeButton = event.target.closest('.like-button');
+        if (likeButton) {
+          const index = parseInt(likeButton.getAttribute('data-index'));
+          toggleLike(index);
+          return;
+        }
+
         const editButton = event.target.closest('.edit-button');
         if (editButton) {
           const index = parseInt(editButton.getAttribute('data-index'));
-          if (!isNaN(index)) {
-            enableEditMode(index);
-          }
+          enableEditMode(index);
+          return;
         }
 
         const saveButton = event.target.closest('.save-button');
         if (saveButton) {
           const index = parseInt(saveButton.getAttribute('data-index'));
+          saveComment(index);
+          return;
+        }
+
+        const editTextarea = event.target.closest('.edit-textarea');
+      if (editTextarea) {
+        return; 
+      }
+
+        const commentCard = event.target.closest('.comment');
+        if (commentCard) {
+          const index = parseInt(commentCard.getAttribute('data-index'));
           if (!isNaN(index)) {
-            saveComment(index);
-          }
+            replyToComment(index);
+          }          
         }
       });
     }
@@ -162,13 +186,13 @@
         //В режиме редактирования
         if(comment.isEdit) {
           return `
-          <li class="comment">
+          <li class="comment" data-index="${index}">
           <div class="comment-header">
-            <div>${comment.name}</div>
+            <div>${escapeHtml(comment.name)}</div>
             <div>${comment.date}</div>
           </div>
           <div class="comment-body">
-            <textarea class="edit-textarea" data-index="${index}">${comment.text}</textarea>
+            <textarea class="edit-textarea" data-index="${index}">${escapeHtml(comment.text)}</textarea>
           </div>
           <div class="comment-footer">
             <button class="save-button" data-index="${index}">Сохранить</button>
@@ -182,14 +206,14 @@
         } else {
           //Обычный режим
         return `
-              <li class="comment">
+              <li class="comment" data-index="${index}">
           <div class="comment-header">
-            <div>${comment.name}</div>
+            <div>${escapeHtml(comment.name)}</div>
             <div>${comment.date}</div>
           </div>
           <div class="comment-body">
             <div class="comment-text">
-              ${comment.text}
+              ${escapeHtml(comment.text)}
             </div>
           </div>
           <div class="comment-footer">
@@ -206,6 +230,7 @@
       }).join('');
 
       commentsEl.innerHTML = commentsHtml;
+      initAllListeners();
     };
 
 
@@ -243,8 +268,6 @@
       updateButtonState();
     };
 
-
-
     //Отключение кнопки при пустых полях
     function updateButtonState() {
       const isNameEmpty = inputNameEl.value === '';
@@ -262,8 +285,7 @@
     }
 
     renderComments();
-    initLikeListeners();
-    initEditAndSaveListeners();
+    initAllListeners();
 
     //Добавление комментария по клике на кнопку
     buttonEl.addEventListener('click', addComment);
