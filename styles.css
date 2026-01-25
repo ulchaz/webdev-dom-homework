@@ -209,3 +209,19 @@ color: #ffffff;
   resize: vertical;
   outline: none;
 }
+ 
+.loading {
+  width: 596px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  padding-left: 48px;
+  box-sizing: border-box;
+  background: radial-gradient(
+    75.42% 75.42% at 50% 42.37%,
+    rgba(53, 53, 53, 0) 22.92%,
+    #7334ea 100%
+  );
+  filter: drop-shadow(0px 20px 67px rgba(0, 0, 0, 0.08));
+  border-radius: 20px;
+}

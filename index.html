@@ -11,23 +11,7 @@
       <ul class="comments" id="comments">
       </ul>
       <button class="delete-button" id="delete-button">Удалить</button>
-      <div class="add-form">
-        <input
-        id="input-name"
-          type="text"
-          class="add-form-name"
-          placeholder="Введите ваше имя"
-        />
-        <textarea
-        id="input-comment"
-          type="textarea"
-          class="add-form-text"
-          placeholder="Введите ваш коментарий"
-          rows="4"
-        ></textarea>
-        <div class="add-form-row">
-          <button id="button" class="add-form-button">Написать</button>
-        </div>
+      <div id="add-form-container">
       </div>
     </div>
   </body>
@@ -38,13 +22,60 @@
 
     document.addEventListener('DOMContentLoaded', () => {
 
-    const inputNameEl = document.getElementById('input-name');
-    const inputCommentEl = document.getElementById('input-comment');
-    const buttonEl = document.getElementById('button');
+    // const inputNameEl = document.getElementById('input-name');
+    // const inputCommentEl = document.getElementById('input-comment');
+    // const buttonEl = document.getElementById('button');
     const commentsEl = document.getElementById('comments');
     const deleteButtonEl = document.getElementById('delete-button');
+    const addFormContainer = document.getElementById('add-form-container');
 
     let comments = [];
+    let isLoading = false;
+
+    //Рендер формы или индикатора загрузки
+    const renderAddForm = () => {
+      if (isLoading) {
+        addFormContainer.innerHTML = `
+        <div class="loading">
+          <div class="loading-text">Комментарий добавляется...</div>
+        </div>`;
+      } else {
+        addFormContainer.innerHTML = `
+         <div class="add-form">
+          <input
+            id="input-name"
+            type="text"
+            class="add-form-name"
+            placeholder="Введите ваше имя"
+          />
+          <textarea
+            id="input-comment"
+            type="textarea"
+            class="add-form-text"
+            placeholder="Введите ваш комментарий"
+            rows="4"
+          ></textarea>
+          <div class="add-form-row">
+            <button id="button" class="add-form-button">Написать</button>
+          </div>
+        </div>`;
+
+       
+          const inputNameEl = document.getElementById('input-name');
+          const inputCommentEl = document.getElementById('input-comment');
+          const buttonEl = document.getElementById('button');
+
+          if (inputNameEl && inputCommentEl && buttonEl) {
+            buttonEl.addEventListener('click', addCommentViaAPI);
+
+            updateButtonState();
+            inputNameEl.addEventListener('input', updateButtonState);
+            inputCommentEl.addEventListener('input', updateButtonState)
+        }
+      }
+    };
+
+    renderAddForm();
 
     //Форматирование даты из API
     function formatDateFromAPI(apiDate) {
@@ -78,9 +109,7 @@
       });
 
       comments = formattedComments;
-
       renderComments();
-
       initEventListeners();
     });
 
@@ -197,9 +226,9 @@
     };
 
     //Инициализация обработчиков событий
-
-    //Кнопки лайка
     function initEventListeners() {
+
+      //Кнопки лайка
       commentsEl.addEventListener('click', (event) => {
         const likeButton = event.target.closest('.like-button');
         if (likeButton) {
@@ -252,6 +281,13 @@
 
     //Функция для добавления комментария через API
     function addCommentViaAPI() {
+      const inputNameEl = document.getElementById('input-name');
+      const inputCommentEl = document.getElementById('input-comment');
+      const buttonEl = document.getElementById('button');
+
+      if (!inputNameEl || !inputCommentEl || !buttonEl) return;
+
+      //Валидация
       inputNameEl.classList.remove('error-color');
       inputCommentEl.classList.remove('error-color');
 
@@ -265,6 +301,12 @@
         return;
       }
 
+      const nameValue = inputNameEl.value;
+      const commentValue = inputCommentEl.value;
+
+      isLoading = true;
+      renderAddForm();
+
       //POST-запрос для добавления комментария
       fetch('https://wedev-api.sky.pro/api/v1/julia-esaulkova/comments', {
         method: "POST",
@@ -276,8 +318,6 @@
         return response.json();
       }).then((responseData) => {
         console.log(responseData);
-
-
 
         //Новый GET-запрос для обновленного списка
         return fetch("https://wedev-api.sky.pro/api/v1/julia-esaulkova/comments", {
@@ -298,41 +338,56 @@
       });
 
       comments = formattedComments;
-
       renderComments();
 
-        inputNameEl.value = "";
-        inputCommentEl.value = "";
       }).catch((error) => {
       console.error("error:", error);
       alert("Не удалось отправить комментарий")
+
       }).finally(() => {
-      buttonEl.disabled = false;
-      buttonEl.textContent = 'Написать';
-      updateButtonState();
+        isLoading = false;
+        renderAddForm();
+
+        const newButtonEl = document.getElementById('button');
+        if (newButtonEl) {
+          newButtonEl.disabled = false;
+          newButtonEl.textContent = 'Написать'
+        }
+        updateButtonState();
       });
     };
 
     //Отключение кнопки при пустых полях
     function updateButtonState() {
+      const inputNameEl = document.getElementById('input-name');
+      const inputCommentEl = document.getElementById('input-comment');
+      const buttonEl = document.getElementById('button');
+
+      if (!inputNameEl || !inputCommentEl || !buttonEl) return;
+
       const isNameEmpty = inputNameEl.value === '';
       const isCommentEmpty = inputCommentEl.value === '';
       buttonEl.disabled = isNameEmpty || isCommentEmpty;
     }
 
-    buttonEl.addEventListener('click', addCommentViaAPI);
 
-    //Обработчик Enter
-    document.addEventListener('keyup', function (e) {
-      if (e.key === 'Enter' && !buttonEl.disabled) {
-        addCommentViaAPI();
-      }
-    });
+    // Обработчик Enter
+    document.addEventListener('keyup', function(e) {
+        if (e.key === 'Enter' && !isLoading) {
+          const buttonEl = document.getElementById('button');
+          if (buttonEl && !buttonEl.disabled) {
+            addCommentViaAPI();
+          }
+        }
+      });
 
-    updateButtonState();
-    inputNameEl.addEventListener('input', updateButtonState);
-    inputCommentEl.addEventListener('input', updateButtonState);
-
+     // Удаление последнего комментария (локальное)
+     deleteButtonEl.addEventListener('click', () => {
+        if (comments.length > 0) {
+          comments.pop();
+          renderComments();
+        }
+      });
     console.log("It works!");
   });
   </script>
