@@ -44,44 +44,59 @@
     const commentsEl = document.getElementById('comments');
     const deleteButtonEl = document.getElementById('delete-button');
 
-    // Дата
-    function getFormattedDate() {
-      const data = new Date()
-      const day = String(data.getDate()).padStart(2, '0');
-      const month = String(data.getMonth() + 1).padStart(2, '0');
-      const year = String(data.getFullYear()).slice(-2);
-      const hours = String(data.getHours()).padStart(2, '0');
-      const minutes = String(data.getMinutes()).padStart(2, '0');
+    let comments = [];
 
+    //Форматирование даты из API
+    function formatDateFromAPI(apiDate) {
+      const date = new Date(apiDate)
+      const day = String(date.getDate()).padStart(2, '0');
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const year = String(date.getFullYear()).slice(-2);
+      const hours = String(date.getHours()).padStart(2, '0');
+      const minutes = String(date.getMinutes()).padStart(2, '0');
       return `${day}.${month}.${year} ${hours}:${minutes}`;
     }
 
+    //GET-запрос для загрузки комментариев
+    fetch("https://wedev-api.sky.pro/api/v1/julia-esaulkova/comments", {
+      method: "GET"
+    }).then((response) => {
+      return response.json();
+    }).then((responseData) => {
+      console.log(responseData);
 
-    const commentElements = document.querySelectorAll('.comment');
+      // Преобразование данных их API
+      const formattedComments = responseData.comments.map((comment) => {
+        return {
+          name: comment.author.name,
+          date: formatDateFromAPI(comment.date),
+          text: comment.text,
+          isLiked: false,
+          likes: 0,
+          isEdit: false
+        };
+      });
 
-    const comments = [
-      {
-        name: 'Глеб Фокин',
-        date: '12.02.22 12:18',
-        text: 'Это будет первый комментарий на этой странице',
-        isLiked: false,
-        likes: 3,
-        isEdit: false,
-      },
-      {
-        name: 'Варвара Н.',
-        date: '13.02.22 19:22',
-        text: 'Мне нравится как оформлена эта страница! ❤',
-        isLiked: true,
-        likes: 75,
-        isEdit: false,
-      },
-    ];
+      comments = formattedComments;
+
+      renderComments();
+
+      initEventListeners();
+    });
+
+    function escapeHtml(unsafe) {
+        if (typeof unsafe !== 'string') return unsafe;
+        return unsafe
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#039;");
+    }
 
     //Функция для обработки лайков
     function toggleLike(index) {
       const comment = comments[index];
-
       comment.isLiked = ! comment.isLiked;
 
       if (comment.isLiked) {
@@ -100,7 +115,6 @@
 
     //Включение редактирования у выбранного комментария
     comments[index].isEdit = true;
-
     renderComments();
     }
 
@@ -117,7 +131,6 @@
         }
 
       comments[index].isEdit = false;
-
       renderComments();
       }
     }
@@ -128,18 +141,6 @@
       inputNameEl.value = '';
       inputCommentEl.value = '>' + comment.text + '\n\n' + comment.name + ', '
     };
-
-    // Функция для экранирования HTML
-    function escapeHtml(unsafe) {
-      if (typeof unsafe !== 'string') return unsafe;
-      return unsafe
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
-    };
-
 
     //Функция рендеринга комментариев
     const renderComments = () => {
@@ -195,8 +196,62 @@
       commentsEl.innerHTML = commentsHtml;
     };
 
-    //Функция для добавления комментария
-    function addComment() {
+    //Инициализация обработчиков событий
+
+    //Кнопки лайка
+    function initEventListeners() {
+      commentsEl.addEventListener('click', (event) => {
+        const likeButton = event.target.closest('.like-button');
+        if (likeButton) {
+          event.stopPropagation()
+          const index = parseInt(likeButton.getAttribute('data-index'));
+          if (!isNaN(index)) {
+            toggleLike(index);
+          }
+        }
+      });
+
+      //Кнопки редактирования
+      commentsEl.addEventListener('click', function (event) {
+        const editButton = event.target.closest('.edit-button')
+        if (editButton) {
+          event.stopPropagation()
+          const index = parseInt(editButton.getAttribute('data-index'));
+          if (!isNaN(index)) {
+            enableEditMode(index);
+          }
+        }
+      });
+
+      //Кнопки сохранения 
+      commentsEl.addEventListener('click', function (event) {
+        const saveButton = event.target.closest('.save-button');
+        if (saveButton) {
+          event.stopPropagation()
+          const index = parseInt(saveButton.getAttribute('data-index'));
+          saveComment(index);
+        }
+      });
+
+      //Ответы на комментарии
+      commentsEl.addEventListener('click', function (event) {
+        if (event.target.closest('.like-button') ||
+            event.target.closest('.edit-button') ||
+            event.target.closest('.save-button')) {
+          return;
+        }
+        if (event.target.closest('.comment')) {
+          const commentCard = event.target.closest('.comment');
+          const index = parseInt(commentCard.getAttribute('data-index'));
+          if (!isNaN(index)) {
+            replyToComment(index);
+          }
+        }
+      });
+    }
+
+    //Функция для добавления комментария через API
+    function addCommentViaAPI() {
       inputNameEl.classList.remove('error-color');
       inputCommentEl.classList.remove('error-color');
 
@@ -210,23 +265,52 @@
         return;
       }
 
-      const formattedDate = getFormattedDate();
+      //POST-запрос для добавления комментария
+      fetch('https://wedev-api.sky.pro/api/v1/julia-esaulkova/comments', {
+        method: "POST",
+        body: JSON.stringify({
+          name: inputNameEl.value,
+          text: inputCommentEl.value,
+        })
+      }).then((response) => {
+        return response.json();
+      }).then((responseData) => {
+        console.log(responseData);
 
-      comments.push({
-        name: inputNameEl.value,
-        date: getFormattedDate(),
-        text: inputCommentEl.value,
-        isLiked: false,
-        likes: 0,
-        isEdit: false,
+
+
+        //Новый GET-запрос для обновленного списка
+        return fetch("https://wedev-api.sky.pro/api/v1/julia-esaulkova/comments", {
+          method : "GET"
+        });
+      }).then((response) => {
+        return response.json();
+      }).then((newResponseData) => {
+      const formattedComments = newResponseData.comments.map((comment) => {
+        return {
+          name: comment.author.name,
+          date: formatDateFromAPI(comment.date),
+          text: comment.text,
+          isLiked: false,
+          likes: 0,
+          isEdit: false,
+        };
       });
+
+      comments = formattedComments;
 
       renderComments();
 
-      inputNameEl.value = '';
-      inputCommentEl.value = '';
-
+        inputNameEl.value = "";
+        inputCommentEl.value = "";
+      }).catch((error) => {
+      console.error("error:", error);
+      alert("Не удалось отправить комментарий")
+      }).finally(() => {
+      buttonEl.disabled = false;
+      buttonEl.textContent = 'Написать';
       updateButtonState();
+      });
     };
 
     //Отключение кнопки при пустых полях
@@ -236,87 +320,18 @@
       buttonEl.disabled = isNameEmpty || isCommentEmpty;
     }
 
-    //Удаление последнего комментария
-    function deleteLastComment() {
-        if (comments.length > 0) {
-        comments.pop();
+    buttonEl.addEventListener('click', addCommentViaAPI);
 
-        renderComments();
-      }
-    }
-
-    //Делегирование событий для обработки кликов
-  commentsEl.addEventListener('click', function(event) {
-    const target = event.target;
-    
-    // Обработка лайков
-    if (target.classList.contains('like-button') || target.closest('.like-button')) {
-      const likeButton = target.classList.contains('like-button') ? target : target.closest('.like-button');
-      const index = parseInt(likeButton.getAttribute('data-index'));
-      if (!isNaN(index)) {
-        toggleLike(index);
-      }
-      return;
-    }
-    
-    // Обработка редактирования
-    if (target.classList.contains('edit-button') || target.closest('.edit-button')) {
-      const editButton = target.classList.contains('edit-button') ? target : target.closest('.edit-button');
-      const index = parseInt(editButton.getAttribute('data-index'));
-      if (!isNaN(index)) {
-        enableEditMode(index);
-      }
-      return;
-    }
-    
-    // Обработка сохранения
-    if (target.classList.contains('save-button') || target.closest('.save-button')) {
-      const saveButton = target.classList.contains('save-button') ? target : target.closest('.save-button');
-      const index = parseInt(saveButton.getAttribute('data-index'));
-      if (!isNaN(index)) {
-        saveComment(index);
-      }
-      return;
-    }
-
-    // Обработка клика по комментарию для ответа
-    if (target.closest('.comment')) {
-      const commentCard = target.closest('.comment');
-      const index = parseInt(commentCard.getAttribute('data-index'));
-      if (!isNaN(index)) {
-        replyToComment(index);
-      }
-    }
-  });
-
-  // Обработка Enter для сохранения в режиме редактирования
-  commentsEl.addEventListener('keyup', function(event) {
-    if (event.target.classList.contains('edit-textarea') && event.key === 'Enter') {
-      const textarea = event.target;
-      const index = parseInt(textarea.getAttribute('data-index'));
-      if (!isNaN(index)) {
-        saveComment(index);
-      }
-    }
-  });
-
-
-    //Добавление комментария по клике на кнопку
-    buttonEl.addEventListener('click', addComment);
-
-    //Добавление комментария при нажатии Enter
+    //Обработчик Enter
     document.addEventListener('keyup', function (e) {
-      if (e.key === 'Enter') {
-        addComment();
+      if (e.key === 'Enter' && !buttonEl.disabled) {
+        addCommentViaAPI();
       }
     });
 
-    renderComments();
     updateButtonState();
     inputNameEl.addEventListener('input', updateButtonState);
     inputCommentEl.addEventListener('input', updateButtonState);
-
-    deleteButtonEl.addEventListener('click', deleteLastComment);
 
     console.log("It works!");
   });
