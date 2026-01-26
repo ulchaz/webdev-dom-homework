@@ -306,13 +306,14 @@
       commentsEl.addEventListener('click', function (event) {
         if (event.target.closest('.like-button') ||
             event.target.closest('.edit-button') ||
-            event.target.closest('.save-button')) {
+            event.target.closest('.save-button') ||
+            event.target.closest('.edit-textarea')) {
           return;
         }
         if (event.target.closest('.comment')) {
           const commentCard = event.target.closest('.comment');
           const index = parseInt(commentCard.getAttribute('data-index'));
-          if (!isNaN(index)) {
+          if (!isNaN(index) && !comments[index].isEdit) {
             replyToComment(index);
           }
         }
