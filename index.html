@@ -22,15 +22,40 @@
 
     document.addEventListener('DOMContentLoaded', () => {
 
-    // const inputNameEl = document.getElementById('input-name');
-    // const inputCommentEl = document.getElementById('input-comment');
-    // const buttonEl = document.getElementById('button');
     const commentsEl = document.getElementById('comments');
     const deleteButtonEl = document.getElementById('delete-button');
     const addFormContainer = document.getElementById('add-form-container');
 
     let comments = [];
     let isLoading = false;
+
+    const fetchAndRenderComments = () => {
+      return fetch("https://wedev-api.sky.pro/api/v1/julia-esaulkova/comments", {
+          method: "GET"
+        })
+          .then((response) => {
+          return response.json();
+        })
+          .then((responseData) => {
+          console.log(responseData);
+
+          // Преобразование данных их API
+          const formattedComments = responseData.comments.map((comment) => {
+            return {
+              name: comment.author.name,
+              date: formatDateFromAPI(comment.date),
+              text: comment.text,
+              isLiked: false,
+              likes: 0,
+              isEdit: false
+            };
+          });
+
+          comments = formattedComments;
+          renderComments();
+          initEventListeners();
+      });
+    }
 
     //Рендер формы или индикатора загрузки
     const renderAddForm = () => {
@@ -88,30 +113,7 @@
       return `${day}.${month}.${year} ${hours}:${minutes}`;
     }
 
-    //GET-запрос для загрузки комментариев
-    fetch("https://wedev-api.sky.pro/api/v1/julia-esaulkova/comments", {
-      method: "GET"
-    }).then((response) => {
-      return response.json();
-    }).then((responseData) => {
-      console.log(responseData);
-
-      // Преобразование данных их API
-      const formattedComments = responseData.comments.map((comment) => {
-        return {
-          name: comment.author.name,
-          date: formatDateFromAPI(comment.date),
-          text: comment.text,
-          isLiked: false,
-          likes: 0,
-          isEdit: false
-        };
-      });
-
-      comments = formattedComments;
-      renderComments();
-      initEventListeners();
-    });
+    fetchAndRenderComments();
 
     function escapeHtml(unsafe) {
         if (typeof unsafe !== 'string') return unsafe;
@@ -167,8 +169,13 @@
     //Функция для ответов на комментарий
     function replyToComment(index) {
       const comment = comments[index];
-      inputNameEl.value = '';
-      inputCommentEl.value = '>' + comment.text + '\n\n' + comment.name + ', '
+      const inputNameEl = document.getElementById('input-name');
+      const inputCommentEl = document.getElementById('input-comment');
+      if (inputNameEl && inputCommentEl) {
+        inputNameEl.value = '';
+        inputCommentEl.value = '>' + comment.text + '\n\n' + comment.name + ', ';
+        updateButtonState();
+      } 
     };
 
     //Функция рендеринга комментариев
@@ -279,6 +286,21 @@
       });
     }
 
+
+
+
+    const postComments = (nameValue, commentValue) => {
+        return  fetch('https://wedev-api.sky.pro/api/v1/julia-esaulkova/comments', {
+        method: "POST",
+        body: JSON.stringify({
+          name: nameValue,
+          text: commentValue,
+        })
+      }).then((response) => {
+        return response.json();
+      })
+    }
+
     //Функция для добавления комментария через API
     function addCommentViaAPI() {
       const inputNameEl = document.getElementById('input-name');
@@ -307,44 +329,18 @@
       isLoading = true;
       renderAddForm();
 
-      //POST-запрос для добавления комментария
-      fetch('https://wedev-api.sky.pro/api/v1/julia-esaulkova/comments', {
-        method: "POST",
-        body: JSON.stringify({
-          name: inputNameEl.value,
-          text: inputCommentEl.value,
+      buttonEl.disabled = true;
+      buttonEl.textContent = 'Комментарий добавляется...'
+
+      postComments(nameValue, commentValue)
+        .then((responseData) => {
+          return fetchAndRenderComments();
         })
-      }).then((response) => {
-        return response.json();
-      }).then((responseData) => {
-        console.log(responseData);
-
-        //Новый GET-запрос для обновленного списка
-        return fetch("https://wedev-api.sky.pro/api/v1/julia-esaulkova/comments", {
-          method : "GET"
-        });
-      }).then((response) => {
-        return response.json();
-      }).then((newResponseData) => {
-      const formattedComments = newResponseData.comments.map((comment) => {
-        return {
-          name: comment.author.name,
-          date: formatDateFromAPI(comment.date),
-          text: comment.text,
-          isLiked: false,
-          likes: 0,
-          isEdit: false,
-        };
-      });
-
-      comments = formattedComments;
-      renderComments();
-
-      }).catch((error) => {
-      console.error("error:", error);
-      alert("Не удалось отправить комментарий")
-
-      }).finally(() => {
+        .catch((error) => {
+        console.error("error:", error);
+        alert("Не удалось отправить комментарий");
+      })
+        .finally(() => {
         isLoading = false;
         renderAddForm();
 
