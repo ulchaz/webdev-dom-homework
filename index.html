@@ -29,6 +29,11 @@
     let comments = [];
     let isLoading = false;
 
+    let formData = {
+      name: '',
+      text: '',
+    }
+
     function delay (interval = 300) {
       return new Promise((resolve) => {
         setTimeout(() => {
@@ -42,7 +47,13 @@
           method: "GET"
         })
           .then((response) => {
-          return response.json();
+            if (response.status === 200) {
+              return response.json();
+            } else if (response.status === 500) {
+              return Promise.reject('Ошибка сервера 500 при загрузке комментариев');
+            } else {
+              return Promise.reject('Неизвестная ошибка при загрузке комментариев');
+            }
         })
           .then((responseData) => {
           console.log(responseData);
@@ -63,7 +74,18 @@
           comments = formattedComments;
           renderComments();
           initEventListeners();
-      });
+      })
+      .catch((error) => {
+        console.error('Ошибка загрузки комментариев:', error);
+
+        if (error === 'Ошибка сервера 500 при загрузке комментариев') {
+          alert('Ошибка сервера 500 при загрузке комментариев. Попробуйте позже.');
+        } else if (error === 'Failed to fetch' || error.message === 'Failed to fetch') {
+          alert('Нет соединения с интернетом. Проверьте соединение и попробуйте снова'); 
+        } else {
+          alert('Не удалось загрузить комментарии. Попробуйте позже');
+        }
+      })
     }
 
     //Рендер формы или индикатора загрузки
@@ -81,6 +103,7 @@
             type="text"
             class="add-form-name"
             placeholder="Введите ваше имя"
+            value="${escapeHtml(formData.name)}"
           />
           <textarea
             id="input-comment"
@@ -88,7 +111,7 @@
             class="add-form-text"
             placeholder="Введите ваш комментарий"
             rows="4"
-          ></textarea>
+          >${escapeHtml(formData.text)}</textarea>
           <div class="add-form-row">
             <button id="button" class="add-form-button">Написать</button>
           </div>
@@ -102,9 +125,24 @@
           if (inputNameEl && inputCommentEl && buttonEl) {
             buttonEl.addEventListener('click', addCommentViaAPI);
 
+            inputNameEl.addEventListener('input', function (e) {
+              formData.name = e.target.value;
+              updateButtonState();
+            });
+            inputCommentEl.addEventListener('input', function (e) {
+              formData.text = e.target.value;
+              updateButtonState();
+            });
+
             updateButtonState();
-            inputNameEl.addEventListener('input', updateButtonState);
-            inputCommentEl.addEventListener('input', updateButtonState)
+            
+            const handleEnterKey = (e) => {
+              if (e.key === 'Enter' && !isLoading && !buttonEl.disabled) {
+                addCommentViaAPI();
+              }
+            };
+            inputNameEl.addEventListener('keyup', handleEnterKey);
+            inputCommentEl.addEventListener('keyup', handleEnterKey);
         }
       }
     };
@@ -195,13 +233,9 @@
     //Функция для ответов на комментарий
     function replyToComment(index) {
       const comment = comments[index];
-      const inputNameEl = document.getElementById('input-name');
-      const inputCommentEl = document.getElementById('input-comment');
-      if (inputNameEl && inputCommentEl) {
-        inputNameEl.value = '';
-        inputCommentEl.value = '>' + comment.text + '\n\n' + comment.name + ', ';
-        updateButtonState();
-      } 
+      formData.text = '>' + comment.text + '\n\n' + comment.name + ', ';
+      formData.name = '';
+      renderAddForm();
     };
 
     //Функция рендеринга комментариев
@@ -320,18 +354,32 @@
       });
     }
 
-
-
-
     const postComments = (nameValue, commentValue) => {
         return  fetch('https://wedev-api.sky.pro/api/v1/julia-esaulkova/comments', {
         method: "POST",
         body: JSON.stringify({
           name: nameValue,
           text: commentValue,
+          // forceError: false,
         })
       }).then((response) => {
-        return response.json();
+        console.log('Статус ответа:', response.status);
+
+        if (response.status === 201 || response.status === 200) {
+          return response.json();
+        } else if (response.status === 400) {
+          return Promise.reject('400: Имя и комментарий должны содержать минимум 3 символа');
+        } else if (response.status === 500) {
+          return Promise.reject('500: Ошибка сервера');
+        } else {
+          return Promise.reject('Неизвестная ошибка сервера');
+        }
+      })
+      .catch((fetchError) => {
+        if (fetchError.message === 'Failed to fetch') {
+          return Promise.reject('Failed to fetch');
+        }
+        return Promise.reject(fetchError);
       })
     }
 
@@ -347,44 +395,71 @@
       inputNameEl.classList.remove('error-color');
       inputCommentEl.classList.remove('error-color');
 
-      if (inputNameEl.value === '') {
+      const nameValue = inputNameEl.value.trim();
+      const commentValue = inputCommentEl.value.trim();
+
+      if (nameValue === '') {
         inputNameEl.classList.add('error-color');
+        alert('Пожалуйста, введите имя');
+        return;
       }
-      if (inputCommentEl.value === '') {
+      
+      if (commentValue === '') {
         inputCommentEl.classList.add('error-color');
-      }
-      if (inputNameEl.value === '' || inputCommentEl.value === '') {
+        alert('Пожалуйста, введите комментарий');
         return;
       }
 
-      const nameValue = inputNameEl.value;
-      const commentValue = inputCommentEl.value;
+      if (nameValue.length < 3) {
+        inputNameEl.classList.add('error-color');
+        alert('Имя должно содержать минимум 3 символа');
+        return;
+      }      
+      
+      if (commentValue.length < 3) {
+        inputCommentEl.classList.add('error-color');
+        alert('Комментарий должен содержать минимум 3 символа');
+        return;
+      }
+      
 
       isLoading = true;
       renderAddForm();
 
       buttonEl.disabled = true;
-      buttonEl.textContent = 'Комментарий добавляется...'
 
       postComments(nameValue, commentValue)
         .then((responseData) => {
           return fetchAndRenderComments();
         })
-        .catch((error) => {
-        console.error("error:", error);
-        alert("Не удалось отправить комментарий");
-      })
-        .finally(() => {
-        isLoading = false;
-        renderAddForm();
+        .then(() => {
+          formData.name = '';
+          formData.text = '';
 
-        const newButtonEl = document.getElementById('button');
-        if (newButtonEl) {
-          newButtonEl.disabled = false;
-          newButtonEl.textContent = 'Написать'
-        }
-        updateButtonState();
-      });
+          isLoading = false;
+          renderAddForm();
+        })
+        .catch((error) => {
+        console.error("Ошибка отправки комментария", error);
+
+        isLoading = false;
+
+        if (error === 'Failed to fetch' || error.message === 'NetworkError when attempting to fetch resource' ||
+      error.message.includes('NetworkError') ||
+      error.message.includes('Failed to fetch')) {
+        alert('Нет соединения с интернетом. Попробуйте позже.');
+      } else if (error === '400: Имя и комментарий должны содержать минимум 3 символа' || 
+                (error.message && error.message.includes('400'))) {
+        alert('Ошибка 400: Слишком короткое имя или комментарий. Минимум 3 символа.');
+      } else if (error === '500: Ошибка сервера' || 
+                (error.message && error.message.includes('500'))) {
+        alert('Ошибка сервера 500. Комментарий не отправлен. Попробуйте позже.');
+      } else {
+        alert('Не удалось отправить комментарий. Попробуйте позже');
+      }
+
+        renderAddForm();
+      })
     };
 
     //Отключение кнопки при пустых полях
@@ -418,7 +493,7 @@
           renderComments();
         }
       });
-    console.log("It works!");
   });
   </script>
 </html>
+

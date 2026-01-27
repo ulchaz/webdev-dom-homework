@@ -211,6 +211,7 @@ color: #ffffff;
 }
  
 .loading {
+  margin-top: 48px;
   width: 596px;
   height: 60px;
   display: flex;
