@@ -1,56 +1,64 @@
-// main.js
 import { fetchComments, postComment } from './api.js';
-import { renderComments, renderAddForm } from './render.js';
+import { 
+  renderComments, 
+  renderAddForm, 
+  renderAuthPrompt, 
+  renderLoginPage, 
+  renderRegisterPage 
+} from './render.js';
 import { 
   getComments, setComments, getFormData, setFormData,
   getIsLoading, setIsLoading,
   toggleLike, enableEditMode, saveComment, replyToComment,
   updateButtonState, validateForm
 } from './comments.js';
+import { initAuth, getIsAuthenticated, getCurrentUser } from './auth.js';
+import { initLoginListeners, initRegisterListeners } from './loginPage.js'; 
 
-const commentsEl = document.getElementById('comments');
-const deleteButtonEl = document.getElementById('delete-button');
-const addFormContainer = document.getElementById('add-form-container');
+const appElement = document.getElementById('app');
 
+// Инициализация обработчиков событий на комментариях
 function initEventListeners() {
-  //const comments = getComments();
-  
-  // Кнопки лайка
+  const commentsEl = document.getElementById('comments');
+  if (!commentsEl) return;
+
+  // Лайки
   commentsEl.addEventListener('click', (event) => {
     const likeButton = event.target.closest('.like-button');
     if (likeButton) {
       event.stopPropagation();
       const index = parseInt(likeButton.getAttribute('data-index'));
       if (!isNaN(index)) {
-       // const currentComments = getComments();
-
         const promise = toggleLike(index);
-
         renderComments(getComments(), commentsEl);
-
         if (promise && typeof promise.then === 'function') {
-            promise.then(() => {
-                renderComments(getComments(), commentsEl);
-            });
+          promise.then(() => {
+            renderComments(getComments(), commentsEl);
+          });
         }
       }
     }
   });
 
-  // Кнопки редактирования
+  // Редактирование
   commentsEl.addEventListener('click', function (event) {
     const editButton = event.target.closest('.edit-button');
     if (editButton) {
       event.stopPropagation();
+      if (!getIsAuthenticated()) {
+        alert('Чтобы редактировать комментарии, необходимо авторизоваться');
+        return;
+      }
       const index = parseInt(editButton.getAttribute('data-index'));
       if (!isNaN(index)) {
         enableEditMode(index);
         renderComments(getComments(), commentsEl);
+        initEventListeners();
       }
     }
   });
 
-  // Кнопки сохранения
+  // Сохранение редактирования
   commentsEl.addEventListener('click', function (event) {
     const saveButton = event.target.closest('.save-button');
     if (saveButton) {
@@ -67,7 +75,7 @@ function initEventListeners() {
     }
   });
 
-  // Ответы на комментарии
+  // Ответ на комментарий
   commentsEl.addEventListener('click', function (event) {
     if (event.target.closest('.like-button') ||
         event.target.closest('.edit-button') ||
@@ -75,140 +83,173 @@ function initEventListeners() {
         event.target.closest('.edit-textarea')) {
       return;
     }
+    
     if (event.target.closest('.comment')) {
+      if (!getIsAuthenticated()) {
+        alert('Чтобы ответить на комментарий, необходимо авторизоваться');
+        return;
+      }
+      
       const commentCard = event.target.closest('.comment');
       const index = parseInt(commentCard.getAttribute('data-index'));
       const comments = getComments();
       if (!isNaN(index) && !comments[index].isEdit) {
         replyToComment(index);
-        renderAddForm(getIsLoading(), getFormData(), addFormContainer);
-        setupFormListeners();
+        fetchAndRenderComments();
       }
     }
   });
+
+  // Обработчик для кнопки "Авторизоваться"
+  const authButton = document.getElementById('auth-button');
+  if (authButton) {
+    authButton.addEventListener('click', () => {
+      appElement.innerHTML = renderLoginPage();
+      import('./loginPage.js').then(({ initLoginListeners }) => {
+        initLoginListeners(fetchAndRenderComments);
+      });
+    });
+  }
 }
 
+// Настройка обработчиков формы добавления
 function setupFormListeners() {
   const inputNameEl = document.getElementById('input-name');
   const inputCommentEl = document.getElementById('input-comment');
   const buttonEl = document.getElementById('button');
 
   if (inputNameEl && inputCommentEl && buttonEl) {
-    buttonEl.addEventListener('click', addCommentViaAPI);
+    if (getIsAuthenticated()) {
+      inputNameEl.readOnly = true;
+    }
 
-    inputNameEl.addEventListener('input', function (e) {
-      const formData = getFormData();
-      formData.name = e.target.value;
-      setFormData(formData);
-      updateButtonState();
-    });
-    
-    inputCommentEl.addEventListener('input', function (e) {
-      const formData = getFormData();
-      formData.text = e.target.value;
-      setFormData(formData);
-      updateButtonState();
-    });
+    const newButton = buttonEl.cloneNode(true);
+    buttonEl.parentNode.replaceChild(newButton, buttonEl);
+    newButton.addEventListener('click', addCommentViaAPI);
+
+    inputNameEl.addEventListener('input', handleNameInput);
+    inputCommentEl.addEventListener('input', handleCommentInput);
 
     updateButtonState();
-    
-    const handleEnterKey = (e) => {
-      if (e.key === 'Enter' && !getIsLoading() && !buttonEl.disabled) {
-        addCommentViaAPI();
-      }
-    };
-    
-    inputNameEl.addEventListener('keyup', handleEnterKey);
-    inputCommentEl.addEventListener('keyup', handleEnterKey);
   }
 }
 
+function handleNameInput(e) {
+  const formData = getFormData();
+  formData.name = e.target.value;
+  setFormData(formData);
+  updateButtonState();
+}
+
+function handleCommentInput(e) {
+  const formData = getFormData();
+  formData.text = e.target.value;
+  setFormData(formData);
+  updateButtonState();
+}
+
+// Отправка комментария
 function addCommentViaAPI() {
+  if (!getIsAuthenticated()) {
+    alert('Чтобы добавить комментарий, необходимо авторизоваться');
+    fetchAndRenderComments();
+    return;
+  }
+
   const validationResult = validateForm();
   if (!validationResult) return;
 
   setIsLoading(true);
-  renderAddForm(getIsLoading(), getFormData(), addFormContainer);
+  
+  // Индикатор загрузки
+  const formData = getFormData();
+  const commentsHtml = renderComments(getComments());
+  appElement.innerHTML = `
+    <div class="container">
+      <ul id="comments" class="comments">${commentsHtml}</ul>
+      <div id="add-form-container">
+        ${renderAddForm(true, formData, true)}
+      </div>
+    </div>
+  `;
 
   postComment(validationResult.name, validationResult.text)
     .then(() => {
-      return fetchAndRenderComments();
-    })
-    .then(() => {
-      setFormData({ name: '', text: '' });
+      setFormData({ name: getCurrentUser().name, text: '' });
       setIsLoading(false);
-      renderAddForm(getIsLoading(), getFormData(), addFormContainer);
-      setupFormListeners();
+      return fetchAndRenderComments();
     })
     .catch((error) => {
       console.error("Ошибка отправки комментария", error);
-
       setIsLoading(false);
-
-      if (error === 'Failed to fetch' || 
-          error.message === 'NetworkError when attempting to fetch resource' ||
-          (error.message && error.message.includes('NetworkError')) ||
-          (error.message && error.message.includes('Failed to fetch'))) {
-        alert('Нет соединения с интернетом. Попробуйте позже.');
-      } else if (error === '400: Имя и комментарий должны содержать минимум 3 символа' || 
-                (error.message && error.message.includes('400'))) {
-        alert('Ошибка 400: Слишком короткое имя или комментарий. Минимум 3 символа.');
-      } else if (error === '500: Ошибка сервера' || 
-                (error.message && error.message.includes('500'))) {
-        alert('Ошибка сервера 500. Комментарий не отправлен. Попробуйте позже.');
+      
+      if (error.includes('401')) {
+        alert('Необходима авторизация');
+      } else if (error.includes('400')) {
+        alert('Имя и комментарий должны содержать минимум 3 символа');
+      } else if (error.includes('500')) {
+        alert('Ошибка сервера. Попробуйте позже');
       } else {
-        alert('Не удалось отправить комментарий. Попробуйте позже');
+        alert('Не удалось отправить комментарий');
       }
-
-      renderAddForm(getIsLoading(), getFormData(), addFormContainer);
-      setupFormListeners();
+      
+      return fetchAndRenderComments();
     });
 }
 
-function fetchAndRenderComments() {
+// Загрузка и отрисовка комментариев
+export function fetchAndRenderComments() {
   return fetchComments()
     .then((fetchedComments) => {
       setComments(fetchedComments);
-      renderComments(getComments(), commentsEl);
+      const commentsHtml = renderComments(getComments());
+      const formData = getFormData();
+      
+      let contentHtml;
+      if (getIsAuthenticated()) {
+        contentHtml = `
+          <div class="container">
+            <ul id="comments" class="comments">${commentsHtml}</ul>
+            <div id="add-form-container">
+              ${renderAddForm(getIsLoading(), formData, true)}
+            </div>
+          </div>
+        `;
+      } else {
+        contentHtml = `
+          <div class="container">
+            <ul id="comments" class="comments">${commentsHtml}</ul>
+            <div id="add-form-container">
+              ${renderAuthPrompt()}
+            </div>
+          </div>
+        `;
+      }
+      
+      appElement.innerHTML = contentHtml;
       initEventListeners();
+      
+      if (getIsAuthenticated()) {
+        setupFormListeners();
+      }
+      
+      return true;
     })
     .catch((error) => {
       console.error('Ошибка загрузки комментариев:', error);
-
-      if (error === 'Ошибка сервера 500 при загрузке комментариев') {
-        alert('Ошибка сервера 500 при загрузке комментариев. Попробуйте позже.');
-      } else if (error === 'Failed to fetch' || error.message === 'Failed to fetch') {
-        alert('Нет соединения с интернетом. Проверьте соединение и попробуйте снова'); 
-      } else {
-        alert('Не удалось загрузить комментарии. Попробуйте позже');
-      }
+      return false;
     });
 }
 
 // Инициализация приложения
 document.addEventListener('DOMContentLoaded', () => {
-  renderAddForm(getIsLoading(), getFormData(), addFormContainer);
-  setupFormListeners();
-  fetchAndRenderComments();
-
-  // Обработчик Enter
-  document.addEventListener('keyup', function(e) {
-    if (e.key === 'Enter' && !getIsLoading()) {
-      const buttonEl = document.getElementById('button');
-      if (buttonEl && !buttonEl.disabled) {
-        addCommentViaAPI();
-      }
-    }
-  });
-
-  // Удаление последнего комментария
-  deleteButtonEl.addEventListener('click', () => {
-    const comments = getComments();
-    if (comments.length > 0) {
-      comments.pop();
-      setComments([...comments]);
-      renderComments(getComments(), commentsEl);
-      initEventListeners();
-    }
-  });
+  const isAuth = initAuth();
+  
+  if (isAuth) {
+    const user = getCurrentUser();
+    setFormData({ name: user.name, text: '' });
+    fetchAndRenderComments();
+  } else {
+    fetchAndRenderComments();
+  }
 });
