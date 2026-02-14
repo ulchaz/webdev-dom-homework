@@ -1,17 +1,46 @@
 import { delay } from './utils.js';
 
 const state = {
-  comments: [],
+  serverComments: [],
+  localState: new Map(),
   formData: { name: '', text: '' },
   isLoading: false
 };
 
 export function getComments() {
-  return state.comments;
+  return state.serverComments.map(comment => {
+    const local = state.localState.get(comment.id) || {
+      isLiked: false,
+      likes: comment.likes || 0,
+      isEdit: false,
+      isLikeLoading: false
+    };
+    
+    return {
+      ...comment,
+      ...local
+    };
+  });
 }
 
-export function setComments(newComments) {
-  state.comments = newComments;
+export function setComments(newServerComments) {
+  state.serverComments = newServerComments;
+  
+  newServerComments.forEach(serverComment => {
+    const existingLocal = state.localState.get(serverComment.id);
+    
+    if (!existingLocal) {
+      state.localState.set(serverComment.id, {
+        isLiked: false,
+        likes: serverComment.likes || 0,
+        isEdit: false,
+        isLikeLoading: false
+      });
+    } else {
+      existingLocal.likes = serverComment.likes || existingLocal.likes;
+      state.localState.set(serverComment.id, existingLocal);
+    }
+  });
 }
 
 export function getFormData() {
@@ -31,61 +60,87 @@ export function setIsLoading(value) {
 }
 
 export function toggleLike(index) {
-  const comments = getComments();
-  const comment = comments[index];
-  if (comment.isLikeLoading) return Promise.resolve();
+  const comment = state.serverComments[index];
+  if (!comment) return Promise.resolve();
 
-  const willBeLiked = !comment.isLiked;
-  const updatedComments = comments.map((c, i) => 
-    i === index ? { ...c, isLikeLoading: true } : c
-  );
-  setComments(updatedComments);
+  const localState = state.localState.get(comment.id) || {
+    isLiked: false,
+    likes: 0,
+    isLikeLoading: false
+  };
 
-  return delay(1000).then(() => {
-    const finalComments = getComments().map((c, i) => {
-      if (i === index) {
-        return {
-          ...c,
-          isLiked: willBeLiked,
-          likes: willBeLiked ? c.likes + 1 : Math.max(0, c.likes - 1),
-          isLikeLoading: false
-        };
-      }
-      return c;
-    });
-    setComments(finalComments);
+  if (localState.isLikeLoading) return Promise.resolve();
+
+  const willBeLiked = !localState.isLiked;
+
+  localState.isLikeLoading = true;
+  localState.isLiked = willBeLiked;
+  localState.likes = willBeLiked ? localState.likes + 1 : Math.max(0, localState.likes - 1);
+  
+  state.localState.set(comment.id, localState);
+
+  return delay(300).then(() => {
+    localState.isLikeLoading = false;
+    state.localState.set(comment.id, localState);
   });
 }
 
 export function enableEditMode(index) {
-  state.comments.forEach(c => c.isEdit = false);
-  state.comments[index].isEdit = true;
+  const comment = state.serverComments[index];
+  if (!comment) return;
+
+  state.localState.forEach((local, id) => {
+    local.isEdit = false;
+    state.localState.set(id, local);
+  });
+  
+  const localState = state.localState.get(comment.id) || {
+    isLiked: false,
+    likes: 0,
+    isEdit: false,
+    isLikeLoading: false
+  };
+  
+  localState.isEdit = true;
+  state.localState.set(comment.id, localState);
 }
 
 export function saveComment(index, newText) {
-  if (newText.trim()) {
-    state.comments[index].text = newText.trim();
+  const comment = state.serverComments[index];
+  if (comment && newText.trim()) {
+    comment.text = newText.trim();
+    
+    const localState = state.localState.get(comment.id);
+    if (localState) {
+      localState.isEdit = false;
+      state.localState.set(comment.id, localState);
+    }
+    
+    return delay(300);
   }
-  state.comments[index].isEdit = false;
 }
 
 export function replyToComment(index) {
-  const comment = state.comments[index];
-  state.formData.text = '>' + comment.text + '\n\n' + comment.name + ', ';
+  const comment = state.serverComments[index];
+  if (comment) {
+    state.formData.text = '>' + comment.text + '\n\n' + comment.name + ', ';
+  }
 }
 
 export function updateButtonState() {
   const inputNameEl = document.getElementById('input-name');
   const inputCommentEl = document.getElementById('input-comment');
   const buttonEl = document.getElementById('button');
-  if (!inputNameEl || !inputCommentEl || !buttonEl) return;
   
-  buttonEl.disabled = !inputNameEl.value.trim() || !inputCommentEl.value.trim();
+  if (inputNameEl && inputCommentEl && buttonEl) {
+    buttonEl.disabled = !inputNameEl.value.trim() || !inputCommentEl.value.trim();
+  }
 }
 
 export function validateForm() {
   const inputNameEl = document.getElementById('input-name');
   const inputCommentEl = document.getElementById('input-comment');
+  
   if (!inputNameEl || !inputCommentEl) return false;
 
   const nameValue = inputNameEl.value.trim();

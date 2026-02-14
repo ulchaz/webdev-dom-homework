@@ -22,93 +22,155 @@ function initEventListeners() {
   const commentsEl = document.getElementById('comments');
   if (!commentsEl) return;
 
-  // Лайки
-  commentsEl.addEventListener('click', (event) => {
-    const likeButton = event.target.closest('.like-button');
+  const newCommentsEl = commentsEl.cloneNode(true);
+  commentsEl.parentNode.replaceChild(newCommentsEl, commentsEl);
+
+  newCommentsEl.addEventListener('click', function(event) {
+    const target = event.target;
+
+    // Обработка лайков
+    const likeButton = target.closest('.like-button');
     if (likeButton) {
+      event.preventDefault();
       event.stopPropagation();
-      const index = parseInt(likeButton.getAttribute('data-index'));
-      if (!isNaN(index)) {
-        const promise = toggleLike(index);
-        renderComments(getComments(), commentsEl);
-        if (promise && typeof promise.then === 'function') {
-          promise.then(() => {
-            renderComments(getComments(), commentsEl);
-          });
-        }
+      
+      const index = likeButton.dataset.index;
+      if (index !== undefined) {
+        handleLike(parseInt(index));
       }
-    }
-  });
-
-  // Редактирование
-  commentsEl.addEventListener('click', function (event) {
-    const editButton = event.target.closest('.edit-button');
-    if (editButton) {
-      event.stopPropagation();
-      if (!getIsAuthenticated()) {
-        alert('Чтобы редактировать комментарии, необходимо авторизоваться');
-        return;
-      }
-      const index = parseInt(editButton.getAttribute('data-index'));
-      if (!isNaN(index)) {
-        enableEditMode(index);
-        renderComments(getComments(), commentsEl);
-        initEventListeners();
-      }
-    }
-  });
-
-  // Сохранение редактирования
-  commentsEl.addEventListener('click', function (event) {
-    const saveButton = event.target.closest('.save-button');
-    if (saveButton) {
-      event.stopPropagation();
-      const index = parseInt(saveButton.getAttribute('data-index'));
-      if (!isNaN(index)) {
-        const textarea = document.querySelector(`.edit-textarea[data-index="${index}"]`);
-        if (textarea) {
-          saveComment(index, textarea.value);
-          renderComments(getComments(), commentsEl);
-          initEventListeners();
-        }
-      }
-    }
-  });
-
-  // Ответ на комментарий
-  commentsEl.addEventListener('click', function (event) {
-    if (event.target.closest('.like-button') ||
-        event.target.closest('.edit-button') ||
-        event.target.closest('.save-button') ||
-        event.target.closest('.edit-textarea')) {
       return;
     }
-    
-    if (event.target.closest('.comment')) {
+
+    // Обработка редактирования
+    const editButton = target.closest('.edit-button');
+    if (editButton) {
+      event.preventDefault();
+      event.stopPropagation();
+      
+      const index = editButton.dataset.index;
       if (!getIsAuthenticated()) {
-        alert('Чтобы ответить на комментарий, необходимо авторизоваться');
+        alert('Авторизуйтесь для редактирования');
         return;
       }
       
-      const commentCard = event.target.closest('.comment');
-      const index = parseInt(commentCard.getAttribute('data-index'));
-      const comments = getComments();
-      if (!isNaN(index) && !comments[index].isEdit) {
-        replyToComment(index);
-        fetchAndRenderComments();
+      if (index !== undefined) {
+        handleEdit(parseInt(index));
+      }
+      return;
+    }
+
+    // Обработка сохранения
+    const saveButton = target.closest('.save-button');
+    if (saveButton) {
+      event.preventDefault();
+      event.stopPropagation();
+      
+      const index = saveButton.dataset.index;
+      if (index !== undefined) {
+        handleSave(parseInt(index));
+      }
+      return;
+    }
+
+    // Обработка ответа на комментарий
+    const commentCard = target.closest('.comment');
+    if (commentCard && !target.closest('button') && !target.closest('textarea')) {
+      event.preventDefault();
+      
+      if (!getIsAuthenticated()) {
+        alert('Авторизуйтесь для ответа на комментарий');
+        return;
+      }
+      
+      const index = commentCard.dataset.index;
+      if (index !== undefined && !commentCard.querySelector('.edit-textarea')) {
+        handleReply(parseInt(index));
       }
     }
   });
 
-  // Обработчик для кнопки "Авторизоваться"
+  // Обработчик для кнопки авторизации
   const authButton = document.getElementById('auth-button');
   if (authButton) {
-    authButton.addEventListener('click', () => {
+    const newAuthButton = authButton.cloneNode(true);
+    authButton.parentNode.replaceChild(newAuthButton, authButton);
+    
+    newAuthButton.addEventListener('click', () => {
       appElement.innerHTML = renderLoginPage();
       import('./loginPage.js').then(({ initLoginListeners }) => {
         initLoginListeners(fetchAndRenderComments);
       });
     });
+  }
+}
+
+function handleReply(index) {
+  replyToComment(index);
+  
+  const formData = getFormData();
+  const textarea = document.getElementById('input-comment');
+  if (textarea) {
+    textarea.value = formData.text;
+  }
+  
+
+  const formContainer = document.getElementById('add-form-container');
+  if (formContainer) {
+    formContainer.scrollIntoView({ behavior: 'smooth' });
+  }
+}
+
+// Обработка лайка
+async function handleLike(index) {
+  try {
+    await toggleLike(index);
+    
+    const currentComments = getComments();
+    const commentsHtml = renderComments(currentComments);
+    const commentsEl = document.getElementById('comments');
+    
+    if (commentsEl) {
+      commentsEl.outerHTML = `<ul id="comments" class="comments">${commentsHtml}</ul>`;
+    }
+    
+    initEventListeners();
+  } catch (error) {
+    console.error('Ошибка лайка:', error);
+  }
+}
+
+// Обработка редактирования
+function handleEdit(index) {
+  enableEditMode(index);
+  
+  const currentComments = getComments();
+  const commentsHtml = renderComments(currentComments);
+  const commentsEl = document.getElementById('comments');
+  
+  if (commentsEl) {
+    commentsEl.outerHTML = `<ul id="comments" class="comments">${commentsHtml}</ul>`;
+  }
+  
+  initEventListeners();
+}
+
+// Обработка сохранения
+function handleSave(index) {
+  const textarea = document.querySelector(`.edit-textarea[data-index="${index}"]`);
+  if (textarea && textarea.value.trim()) {
+    saveComment(index, textarea.value);
+    
+    const updatedComments = getComments();
+    const commentsHtml = renderComments(updatedComments);
+    const commentsEl = document.getElementById('comments');
+    
+    if (commentsEl) {
+      commentsEl.outerHTML = `<ul id="comments" class="comments">${commentsHtml}</ul>`;
+    }
+    
+    initEventListeners();
+  } else {
+    alert('Комментарий не может быть пустым');
   }
 }
 
@@ -125,6 +187,7 @@ function setupFormListeners() {
 
     const newButton = buttonEl.cloneNode(true);
     buttonEl.parentNode.replaceChild(newButton, buttonEl);
+    
     newButton.addEventListener('click', addCommentViaAPI);
 
     inputNameEl.addEventListener('input', handleNameInput);
@@ -161,7 +224,6 @@ function addCommentViaAPI() {
 
   setIsLoading(true);
   
-  // Индикатор загрузки
   const formData = getFormData();
   const commentsHtml = renderComments(getComments());
   appElement.innerHTML = `
@@ -202,7 +264,9 @@ export function fetchAndRenderComments() {
   return fetchComments()
     .then((fetchedComments) => {
       setComments(fetchedComments);
-      const commentsHtml = renderComments(getComments());
+      
+      const commentsWithLocalState = getComments();
+      const commentsHtml = renderComments(commentsWithLocalState);
       const formData = getFormData();
       
       let contentHtml;
@@ -227,11 +291,13 @@ export function fetchAndRenderComments() {
       }
       
       appElement.innerHTML = contentHtml;
-      initEventListeners();
       
-      if (getIsAuthenticated()) {
-        setupFormListeners();
-      }
+      setTimeout(() => {
+        initEventListeners();
+        if (getIsAuthenticated()) {
+          setupFormListeners();
+        }
+      }, 50);
       
       return true;
     })
@@ -244,12 +310,10 @@ export function fetchAndRenderComments() {
 // Инициализация приложения
 document.addEventListener('DOMContentLoaded', () => {
   const isAuth = initAuth();
-  
   if (isAuth) {
     const user = getCurrentUser();
     setFormData({ name: user.name, text: '' });
-    fetchAndRenderComments();
-  } else {
-    fetchAndRenderComments();
   }
+  
+  fetchAndRenderComments();
 });

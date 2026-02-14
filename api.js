@@ -1,6 +1,7 @@
 import { formatDateFromAPI } from './utils.js';
 
 const BASE_URL = "https://wedev-api.sky.pro/api/v2/julia-esaulkova/comments";
+const USER_URL = "https://wedev-api.sky.pro/api/user";
 let token = null;
 
 export function setToken(newToken) {
@@ -21,16 +22,17 @@ export function fetchComments() {
     headers.Authorization = `Bearer ${token}`;
   }
 
-  return fetch(`${BASE_URL}`, { method: "GET", headers })
+  return fetch(BASE_URL, { 
+    method: "GET", 
+    headers 
+  })
     .then((response) => {
       if (response.status === 200) {
         return response.json();
       } else if (response.status === 401) {
-        return Promise.reject('Необходима авторизация');
-      } else if (response.status === 500) {
-        return Promise.reject('Ошибка сервера 500');
+        return Promise.reject('401: Необходима авторизация');
       }
-      return Promise.reject('Неизвестная ошибка');
+      return Promise.reject('Ошибка загрузки');
     })
     .then((responseData) => {
       return responseData.comments.map((comment) => ({
@@ -38,25 +40,27 @@ export function fetchComments() {
         name: comment.author.name,
         date: formatDateFromAPI(comment.date),
         text: comment.text,
-        isLiked: false,
-        likes: 0,
-        isEdit: false,
-        isLikeLoading: false,
+        likes: comment.likes || 0
       }));
     });
 }
 
 export function postComment(name, text) {
   if (!token) {
-    return Promise.reject('Необходима авторизация');
+    return Promise.reject('401: Необходима авторизация');
   }
 
-  return fetch(`${BASE_URL}`, {
+  return fetch(BASE_URL, {
     method: "POST",
-    headers: { Authorization: `Bearer ${token}` },
-    body: JSON.stringify({ name, text }),
+    headers: { 
+      Authorization: `Bearer ${token}`
+    },
+    body: JSON.stringify({ 
+      text: text,
+      name: name 
+    }),
   }).then((response) => {
-    if (response.status === 201 || response.status === 200) {
+    if (response.status === 201) {
       return response.json();
     } else if (response.status === 400) {
       return response.json().then(data => {
@@ -64,9 +68,39 @@ export function postComment(name, text) {
       });
     } else if (response.status === 401) {
       return Promise.reject('401: Необходима авторизация');
-    } else if (response.status === 500) {
-      return Promise.reject('500: Ошибка сервера');
     }
     return Promise.reject('Неизвестная ошибка');
+  });
+}
+
+export function registerUser({ login, name, password }) {
+  return fetch(`${USER_URL}`, {
+    method: 'POST',
+    body: JSON.stringify({ login, name, password }),
+  }).then((response) => {
+    if (response.status === 201) {
+      return response.json();
+    } else if (response.status === 400) {
+      return response.json().then((data) => {
+        return Promise.reject(data.error || 'Ошибка регистрации');
+      });
+    }
+    return Promise.reject('Ошибка регистрации');
+  });
+}
+
+export function loginUser({ login, password }) {
+  return fetch(`${USER_URL}/login`, {
+    method: 'POST',
+    body: JSON.stringify({ login, password }),
+  }).then((response) => {
+    if (response.status === 201) {
+      return response.json();
+    } else if (response.status === 400) {
+      return response.json().then((data) => {
+        return Promise.reject('Неверный логин или пароль');
+      });
+    }
+    return Promise.reject('Ошибка авторизации');
   });
 }

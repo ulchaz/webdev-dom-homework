@@ -1,4 +1,4 @@
-import { setToken, removeToken } from './api.js';
+import { setToken, loginUser, registerUser } from './api.js';
 
 let isAuthenticated = false;
 let currentUser = null;
@@ -20,7 +20,7 @@ export function setAuth(token, user) {
 }
 
 export function logout() {
-  removeToken();
+  setToken(null);
   isAuthenticated = false;
   currentUser = null;
   localStorage.removeItem('token');
@@ -41,31 +41,9 @@ export function initAuth() {
 }
 
 export function register({ login, name, password }) {
-  return fetch('https://wedev-api.sky.pro/api/user', {
-    method: 'POST',
-    body: JSON.stringify({ login, name, password }),
-  }).then((response) => {
-    if (response.status === 201) {
-      return response.json();
-    } else if (response.status === 400) {
-      return Promise.reject('Пользователь с таким логином уже существует');
-    }
-    return Promise.reject('Ошибка регистрации');
-  });
+  return registerUser({ login, name, password });
 }
 
 export function login({ login, password }) {
-  return fetch('https://wedev-api.sky.pro/api/user/login', {
-    method: 'POST',
-    body: JSON.stringify({ login, password }),
-  }).then((response) => {
-    if (response.status === 201) {
-      return response.json();
-    } else if (response.status === 400) {
-      return response.json().then(() => {
-        return Promise.reject('Неверный логин или пароль');
-      });
-    }
-    return Promise.reject('Ошибка авторизации');
-  });
+  return loginUser({ login, password });
 }
