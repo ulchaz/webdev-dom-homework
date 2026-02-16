@@ -1,10 +1,14 @@
+// utils.js
+import { format, parseISO } from 'date-fns';
+
 export function delay(interval = 300) {
   return new Promise(resolve => setTimeout(resolve, interval));
 }
 
 export function formatDateFromAPI(apiDate) {
-  const date = new Date(apiDate);
-  return `${String(date.getDate()).padStart(2, '0')}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getFullYear()).slice(-2)} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+  // Шведский формат: yyyy-MM-dd hh.mm.ss
+  const date = parseISO(apiDate);
+  return format(date, 'yyyy-MM-dd hh.mm.ss');
 }
 
 export function escapeHtml(unsafe) {

@@ -1,3 +1,4 @@
+//render.js
 import { escapeHtml } from './utils.js';
 
 export function renderComments(comments) {

@@ -1,3 +1,4 @@
+//loginPage.js
 import { login, register, setAuth } from './auth.js';
 import { fetchAndRenderComments } from './main.js';
 import { renderRegisterPage, renderLoginPage } from './render.js';
