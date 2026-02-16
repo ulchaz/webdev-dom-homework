@@ -1,3 +1,4 @@
+//main.js
 import { fetchComments, postComment } from './api.js';
 import { 
   renderComments, 

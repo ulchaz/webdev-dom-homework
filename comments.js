@@ -1,3 +1,4 @@
+//comments.js
 import { delay } from './utils.js';
 
 const state = {

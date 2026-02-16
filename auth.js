@@ -1,3 +1,4 @@
+//auth.js
 import { setToken, loginUser, registerUser } from './api.js';
 
 let isAuthenticated = false;

@@ -1,3 +1,4 @@
+//api.js
 import { formatDateFromAPI } from './utils.js';
 
 const BASE_URL = "https://wedev-api.sky.pro/api/v2/julia-esaulkova/comments";
